@@ -6,17 +6,23 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { Mail, Send, Loader2 } from "lucide-react";
+import { Mail, Send, Loader2, AlertCircle } from "lucide-react";
 
 export default function EmailTest() {
   const [loading, setLoading] = useState(false);
   const [to, setTo] = useState("gestaosindical@saltonaweb.sh27.com.br");
-  const [from, setFrom] = useState("onboarding@resend.dev");
+  const [from, setFrom] = useState("");
   const [subject, setSubject] = useState("Teste de Envio de Email");
   const [html, setHtml] = useState("<p>Este é um email de teste enviado do sistema via Resend.</p>");
 
   const handleSendTest = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!from) {
+      toast.error("O campo remetente é obrigatório para domínios verificados.");
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -43,10 +49,9 @@ export default function EmailTest() {
       }
 
       toast.success("Email enviado com sucesso!");
-      console.log("Email sent result:", result);
     } catch (error: any) {
       console.error("Error sending email:", error);
-      toast.error(error.message || "Falha ao enviar email. Verifique se a chave da API está configurada.");
+      toast.error("Falha no envio: Use um remetente do seu domínio verificado.");
     } finally {
       setLoading(false);
     }
@@ -58,7 +63,7 @@ export default function EmailTest() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-slate-900">Teste de Emails</h1>
           <p className="text-slate-500 mt-1">
-            Ferramenta para testar a integração com o Resend.
+            Ferramenta para testar a integração com o Resend utilizando seu domínio.
           </p>
         </div>
 
@@ -76,24 +81,25 @@ export default function EmailTest() {
             <CardContent>
               <form onSubmit={handleSendTest} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="from" className="font-bold text-slate-700">Remetente (E-mail configurado no Resend)</Label>
-                  <Input
-                    id="from"
-                    type="text"
-                    placeholder="Nome <contato@seudominio.com.br> ou apenas o e-mail"
+                  <Label htmlFor="from" className="font-bold text-slate-700">Remetente (Seu Domínio)</Label>
+                  <Input 
+                    id="from" 
+                    type="text" 
+                    placeholder="contato@seudominio.com.br" 
                     value={from}
                     onChange={(e) => setFrom(e.target.value)}
-                    className="rounded-xl"
+                    className="rounded-xl border-blue-100 focus:ring-blue-600/10"
                     required
                   />
+                  <p className="text-[10px] text-slate-400 italic">O Resend exige que o remetente pertença ao domínio que você verificou.</p>
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="to" className="font-bold text-slate-700">Destinatário</Label>
-                  <Input
-                    id="to"
-                    type="email"
-                    placeholder="email@exemplo.com"
+                  <Input 
+                    id="to" 
+                    type="email" 
+                    placeholder="email@exemplo.com" 
                     value={to}
                     onChange={(e) => setTo(e.target.value)}
                     className="rounded-xl"
@@ -142,11 +148,15 @@ export default function EmailTest() {
             </CardContent>
           </Card>
 
-          <Card className="bg-slate-50 border-dashed border-slate-300">
-            <CardContent className="pt-6">
-              <p className="text-sm text-slate-500">
-                <strong>Nota:</strong> Certifique-se de configurar a Secret <code className="bg-slate-200 px-1 rounded text-slate-900 font-mono">RESEND_API_KEY</code> no painel do Supabase antes de realizar o teste.
-              </p>
+          <Card className="bg-amber-50 border-dashed border-amber-200">
+            <CardContent className="pt-6 flex gap-3">
+              <AlertCircle className="text-amber-600 shrink-0" size={20} />
+              <div className="space-y-1">
+                <p className="text-xs text-amber-800 font-bold uppercase">Dica de Verificação</p>
+                <p className="text-xs text-amber-700 leading-relaxed">
+                  Se o erro persistir mesmo usando seu domínio, verifique se o status do domínio no painel do Resend está como <strong>"Verified"</strong>.
+                </p>
+              </div>
             </CardContent>
           </Card>
         </div>
