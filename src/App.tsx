@@ -22,6 +22,8 @@ import Invoices from "./pages/company/Invoices";
 import Configuracoes from "./pages/Configuracoes";
 import Login from "./pages/auth/Login";
 import Register from "./pages/auth/Register";
+import ForgotPassword from "./pages/auth/ForgotPassword";
+import ResetPassword from "./pages/auth/ResetPassword";
 import LegalScheduling from "./pages/employee/LegalScheduling";
 import Jurisdictions from "./pages/employee/Jurisdictions";
 import NotFound from "./pages/NotFound";
@@ -113,6 +115,8 @@ const App = () => (
             <Route path="/" element={<RootRedirect />} />
             <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
             <Route path="/cadastro" element={<PublicRoute><Register /></PublicRoute>} />
+            <Route path="/forgot-password" element={<PublicRoute><ForgotPassword /></PublicRoute>} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             
             <Route element={<AuthenticatedLayout allowedRoles={['administrador']} />}>
               <Route path="/admin">
