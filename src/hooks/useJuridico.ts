@@ -2,10 +2,13 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useSessionContext } from "@/contexts/SessionContext";
+import { useProfile } from "@/hooks/useProfile";
 
 export const useJuridico = () => {
   const queryClient = useQueryClient();
-  const { user, role } = useSessionContext();
+  const { user } = useSessionContext();
+  const { data: profile } = useProfile();
+  const role = profile?.role;
 
   const { data: appointments = [], isLoading } = useQuery({
     queryKey: ["juridico-appointments", user?.id, role],

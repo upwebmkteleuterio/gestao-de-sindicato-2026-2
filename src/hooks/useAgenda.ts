@@ -2,10 +2,13 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useSessionContext } from "@/contexts/SessionContext";
+import { useProfile } from "@/hooks/useProfile";
 
 export const useAgenda = (companyId?: string) => {
   const queryClient = useQueryClient();
-  const { user, role } = useSessionContext();
+  const { user } = useSessionContext();
+  const { data: profile } = useProfile();
+  const role = profile?.role;
 
   // 1. Buscar todos os agendamentos (Filtro por empresa se fornecido e não for admin)
   const { data: appointments = [], isLoading } = useQuery({
