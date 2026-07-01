@@ -1,5 +1,4 @@
 import { useState } from "react";
-import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,7 +19,6 @@ export default function EmailTest() {
     setLoading(true);
 
     try {
-      // Get the current session to pass the authorization header
       const { data: { session } } = await supabase.auth.getSession();
       
       const response = await fetch(`https://syzhrxnnoncaftojlflv.supabase.co/functions/v1/send-email`, {
@@ -54,20 +52,20 @@ export default function EmailTest() {
   };
 
   return (
-    <DashboardLayout>
-      <div className="flex flex-col gap-6">
+    <div className="p-6 lg:p-10 animate-in fade-in duration-500">
+      <div className="max-w-7xl mx-auto flex flex-col gap-8">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Teste de Emails</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-3xl font-bold tracking-tight text-slate-900">Teste de Emails</h1>
+          <p className="text-slate-500 mt-1">
             Ferramenta para testar a integração com o Resend.
           </p>
         </div>
 
         <div className="grid gap-6 max-w-2xl">
-          <Card>
+          <Card className="border-slate-200 shadow-sm">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Mail className="h-5 w-5" />
+              <CardTitle className="flex items-center gap-2 text-slate-900">
+                <Mail className="h-5 w-5 text-blue-600" />
                 Enviar Email de Teste
               </CardTitle>
               <CardDescription>
@@ -77,41 +75,43 @@ export default function EmailTest() {
             <CardContent>
               <form onSubmit={handleSendTest} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="to">Destinatário</Label>
+                  <Label htmlFor="to" className="font-bold text-slate-700">Destinatário</Label>
                   <Input 
                     id="to" 
                     type="email" 
                     placeholder="email@exemplo.com" 
                     value={to}
                     onChange={(e) => setTo(e.target.value)}
+                    className="rounded-xl"
                     required
                   />
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="subject">Assunto</Label>
+                  <Label htmlFor="subject" className="font-bold text-slate-700">Assunto</Label>
                   <Input 
                     id="subject" 
                     placeholder="Assunto do email" 
                     value={subject}
                     onChange={(e) => setSubject(e.target.value)}
+                    className="rounded-xl"
                     required
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="html">Conteúdo HTML</Label>
+                  <Label htmlFor="html" className="font-bold text-slate-700">Conteúdo HTML</Label>
                   <Textarea 
                     id="html" 
                     placeholder="<p>Conteúdo do email</p>" 
-                    className="min-h-[150px]"
+                    className="min-h-[150px] rounded-xl"
                     value={html}
                     onChange={(e) => setHtml(e.target.value)}
                     required
                   />
                 </div>
 
-                <Button type="submit" className="w-full" disabled={loading}>
+                <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 h-12 rounded-xl font-bold" disabled={loading}>
                   {loading ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -128,15 +128,15 @@ export default function EmailTest() {
             </CardContent>
           </Card>
 
-          <Card className="bg-muted/50 border-dashed">
+          <Card className="bg-slate-50 border-dashed border-slate-300">
             <CardContent className="pt-6">
-              <p className="text-sm text-muted-foreground">
-                <strong>Nota:</strong> Certifique-se de configurar a Secret <code className="bg-muted px-1 rounded">RESEND_API_KEY</code> no painel do Supabase antes de realizar o teste.
+              <p className="text-sm text-slate-500">
+                <strong>Nota:</strong> Certifique-se de configurar a Secret <code className="bg-slate-200 px-1 rounded text-slate-900 font-mono">RESEND_API_KEY</code> no painel do Supabase antes de realizar o teste.
               </p>
             </CardContent>
           </Card>
         </div>
       </div>
-    </DashboardLayout>
+    </div>
   );
 }
