@@ -1,0 +1,142 @@
+import { useState } from "react";
+import DashboardLayout from "@/components/layout/DashboardLayout";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { Mail, Send, Loader2 } from "lucide-react";
+
+export default function EmailTest() {
+  const [loading, setLoading] = useState(false);
+  const [to, setTo] = useState("gestaosindical@saltonaweb.sh27.com.br");
+  const [subject, setSubject] = useState("Teste de Envio de Email");
+  const [html, setHtml] = useState("<p>Este é um email de teste enviado do sistema via Resend.</p>");
+
+  const handleSendTest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      // Get the current session to pass the authorization header
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      const response = await fetch(`https://syzhrxnnoncaftojlflv.supabase.co/functions/v1/send-email`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token || ''}`,
+        },
+        body: JSON.stringify({
+          to,
+          subject,
+          html,
+          from: 'onboarding@resend.dev'
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "Erro ao enviar email");
+      }
+
+      toast.success("Email enviado com sucesso!");
+      console.log("Email sent result:", result);
+    } catch (error: any) {
+      console.error("Error sending email:", error);
+      toast.error(error.message || "Falha ao enviar email. Verifique se a chave da API está configurada.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <DashboardLayout>
+      <div className="flex flex-col gap-6">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Teste de Emails</h1>
+          <p className="text-muted-foreground">
+            Ferramenta para testar a integração com o Resend.
+          </p>
+        </div>
+
+        <div className="grid gap-6 max-w-2xl">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Mail className="h-5 w-5" />
+                Enviar Email de Teste
+              </CardTitle>
+              <CardDescription>
+                Preencha os campos abaixo para testar o disparo.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSendTest} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="to">Destinatário</Label>
+                  <Input 
+                    id="to" 
+                    type="email" 
+                    placeholder="email@exemplo.com" 
+                    value={to}
+                    onChange={(e) => setTo(e.target.value)}
+                    required
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="subject">Assunto</Label>
+                  <Input 
+                    id="subject" 
+                    placeholder="Assunto do email" 
+                    value={subject}
+                    onChange={(e) => setSubject(e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="html">Conteúdo HTML</Label>
+                  <Textarea 
+                    id="html" 
+                    placeholder="<p>Conteúdo do email</p>" 
+                    className="min-h-[150px]"
+                    value={html}
+                    onChange={(e) => setHtml(e.target.value)}
+                    required
+                  />
+                </div>
+
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Enviando...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="mr-2 h-4 w-4" />
+                      Enviar Teste
+                    </>
+                  )}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-muted/50 border-dashed">
+            <CardContent className="pt-6">
+              <p className="text-sm text-muted-foreground">
+                <strong>Nota:</strong> Certifique-se de configurar a Secret <code className="bg-muted px-1 rounded">RESEND_API_KEY</code> no painel do Supabase antes de realizar o teste.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </DashboardLayout>
+  );
+}

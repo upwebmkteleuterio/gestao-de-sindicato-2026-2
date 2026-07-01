@@ -12,6 +12,7 @@ import Companies from "./pages/admin/Companies";
 import Agenda from "./pages/admin/Agenda";
 import FinancialLegal from "./pages/admin/FinancialLegal";
 import Juridico from "./pages/admin/Juridico";
+import EmailTest from "./pages/admin/EmailTest";
 import CompanyDashboard from "./pages/company/CompanyDashboard";
 import ScheduleHomologation from "./pages/company/ScheduleHomologation";
 import HomologationList from "./pages/company/HomologationList";
@@ -121,6 +122,7 @@ const App = () => (
                 <Route path="financeiro" element={<FinancialLegal />} />
                 <Route path="agenda" element={<Agenda />} />
                 <Route path="juridico" element={<Juridico />} />
+                <Route path="email-teste" element={<EmailTest />} />
               </Route>
               <Route path="/configuracoes" element={<Configuracoes />} />
             </Route>

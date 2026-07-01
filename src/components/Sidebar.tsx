@@ -54,6 +54,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
     // { label: "Financeiro", icon: "payments", path: "/admin/financeiro" }, // Ocultado temporariamente
     { label: "Agenda", icon: "calendar_month", path: "/admin/agenda" },
     { label: "Jurídico", icon: "gavel", path: "/admin/juridico" },
+    { label: "Teste de emails", icon: "mail", path: "/admin/email-teste" },
     { label: "Configurações", icon: "settings", path: "/configuracoes" },
   ];
 
