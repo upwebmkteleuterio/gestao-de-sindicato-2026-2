@@ -11,6 +11,7 @@ import { Mail, Send, Loader2 } from "lucide-react";
 export default function EmailTest() {
   const [loading, setLoading] = useState(false);
   const [to, setTo] = useState("gestaosindical@saltonaweb.sh27.com.br");
+  const [from, setFrom] = useState("onboarding@resend.dev");
   const [subject, setSubject] = useState("Teste de Envio de Email");
   const [html, setHtml] = useState("<p>Este é um email de teste enviado do sistema via Resend.</p>");
 
@@ -29,9 +30,9 @@ export default function EmailTest() {
         },
         body: JSON.stringify({
           to,
+          from,
           subject,
           html,
-          from: 'onboarding@resend.dev'
         }),
       });
 
@@ -75,11 +76,24 @@ export default function EmailTest() {
             <CardContent>
               <form onSubmit={handleSendTest} className="space-y-4">
                 <div className="space-y-2">
+                  <Label htmlFor="from" className="font-bold text-slate-700">Remetente (E-mail configurado no Resend)</Label>
+                  <Input
+                    id="from"
+                    type="text"
+                    placeholder="Nome <contato@seudominio.com.br> ou apenas o e-mail"
+                    value={from}
+                    onChange={(e) => setFrom(e.target.value)}
+                    className="rounded-xl"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
                   <Label htmlFor="to" className="font-bold text-slate-700">Destinatário</Label>
-                  <Input 
-                    id="to" 
-                    type="email" 
-                    placeholder="email@exemplo.com" 
+                  <Input
+                    id="to"
+                    type="email"
+                    placeholder="email@exemplo.com"
                     value={to}
                     onChange={(e) => setTo(e.target.value)}
                     className="rounded-xl"
