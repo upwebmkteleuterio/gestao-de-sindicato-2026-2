@@ -39,6 +39,15 @@ const Companies = () => {
     totalItems
   } = useCompaniesManager();
 
+  // Scroll to top when page changes
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    const scrollContainer = document.getElementById('scroll-container');
+    if (scrollContainer) {
+      scrollContainer.scrollTop = 0;
+    }
+  }, [currentPage]);
+
   // Armazena o ID da última empresa selecionada para destacar e voltar scroll
   useEffect(() => {
     if (selectedCompany) {
