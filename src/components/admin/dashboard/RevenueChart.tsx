@@ -2,7 +2,6 @@ import React from "react";
 import { useAdminDashboardData } from "@/hooks/useAdminDashboardData";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/utils/formatters";
 
 const RevenueChart = () => {
@@ -22,41 +21,84 @@ const RevenueChart = () => {
 
   const monthlyData = data?.monthlyRevenue || [];
   const maxAmount = Math.max(...monthlyData.flatMap(d => [d.collected, d.pending])) || 1;
+  const chartWidth = 800;
+  const chartHeight = 300;
+  const paddingBottom = 50; // Space for X-axis labels
+
+  // Function to generate SVG path data (d attribute)
+  const generatePath = (key: 'collected' | 'pending', isArea: boolean = false) => {
+    if (monthlyData.length === 0) return "";
+
+    const points = monthlyData.map((d, index) => {
+      const x = (index / (monthlyData.length - 1)) * chartWidth;
+      // Scale Y value: 0 is bottom (chartHeight - paddingBottom), maxAmount is top (0)
+      const y = chartHeight - paddingBottom - ((d[key] / maxAmount) * (chartHeight - paddingBottom));
+      return `${x},${y}`;
+    }).join(' ');
+
+    let path = `M${points.replace(/ /g, ' L')}`;
+
+    if (isArea) {
+      // Close the path for area fill
+      path += ` L${chartWidth},${chartHeight - paddingBottom} L0,${chartHeight - paddingBottom} Z`;
+    }
+    
+    return path;
+  };
+
+  const collectedPath = generatePath('collected');
+  const collectedAreaPath = generatePath('collected', true);
+  const pendingPath = generatePath('pending');
 
   return (
     <Card className="border-slate-200 shadow-sm overflow-hidden">
       <CardHeader>
         <CardTitle className="text-lg font-bold text-slate-900">Receita vs Inadimplência</CardTitle>
-        <p className="text-sm text-slate-500">Desempenho financeiro nos últimos 6 meses</p>
+        <p className="text-sm text-slate-500">Desempenho financeiro nos últimos {monthlyData.length} meses</p>
       </CardHeader>
       <CardContent className="pt-0">
-        <div className="flex items-end justify-between h-64 gap-4 p-2 border-b border-slate-200">
-          {monthlyData.map((d, index) => {
-            const collectedHeight = (d.collected / maxAmount) * 100;
-            const pendingHeight = (d.pending / maxAmount) * 100;
+        <div className="relative h-64 w-full group">
+          <svg className="w-full h-full" preserveAspectRatio="none" viewBox={`0 0 ${chartWidth} ${chartHeight}`}>
+            {/* Grid Lines (Horizontal) */}
+            {[0, 50, 100, 150, 200, 250].map(y => (
+                <line key={y} stroke="#e5e7eb" strokeWidth="1" x1="0" x2={chartWidth} y1={y} y2={y} />
+            ))}
+            
+            {/* Collected Revenue Area (Blue Shadow) */}
+            <path 
+              d={collectedAreaPath} 
+              fill="url(#blueGradient)" 
+              opacity="0.2"
+            ></path>
 
-            return (
-              <div key={index} className="flex flex-col items-center justify-end h-full flex-1 group relative">
-                {/* Tooltip */}
-                <div className="absolute bottom-full mb-2 hidden group-hover:block bg-slate-800 text-white text-xs rounded py-1 px-2 whitespace-nowrap z-10">
-                    <p className="font-bold">{d.month}</p>
-                    <p>Pago: {formatCurrency(d.collected)}</p>
-                    <p>Pendente: {formatCurrency(d.pending)}</p>
-                </div>
+            {/* Collected Revenue Line (Blue) */}
+            <path 
+              d={collectedPath} 
+              fill="none" 
+              stroke="#3b82f6" // Blue-500
+              strokeWidth="3"
+              strokeLinejoin="round"
+              strokeLinecap="round"
+            ></path>
 
-                {/* Pending Bar (Red) */}
-                <div 
-                  className="w-full bg-red-500 rounded-t-sm transition-all duration-500" 
-                  style={{ height: `${pendingHeight * 0.8}px` }} // Scale down for visual appeal
-                ></div>
-                {/* Collected Bar (Blue) */}
-                <div 
-                  className="w-full bg-blue-600 rounded-t-sm transition-all duration-500" 
-                  style={{ height: `${collectedHeight * 0.8}px` }} // Scale down for visual appeal
-                ></div>
-              </div>
-            );
-          })}
+            {/* Pending Revenue Line (Red Dotted) */}
+            <path 
+              d={pendingPath} 
+              fill="none" 
+              stroke="#ef4444" // Red-500
+              strokeDasharray="5,5" 
+              strokeWidth="2"
+              strokeLinejoin="round"
+              strokeLinecap="round"
+            ></path>
+            
+            <defs>
+              <linearGradient id="blueGradient" x1="0%" x2="0%" y1="0%" y2="100%">
+                <stop offset="0%" style={{ stopColor: "#3b82f6", stopOpacity: 1 }}></stop>
+                <stop offset="100%" style={{ stopColor: "#3b82f6", stopOpacity: 0 }}></stop>
+              </linearGradient>
+            </defs>
+          </svg>
         </div>
         
         {/* X-Axis Labels */}
