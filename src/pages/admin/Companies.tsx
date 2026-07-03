@@ -31,7 +31,11 @@ const Companies = () => {
     handleDeleteCompany,
     handleEditCompany,
     handleCloseModal,
-    handleUpdateApprovalStatus // Novo handler
+    handleUpdateApprovalStatus,
+    currentPage,
+    setCurrentPage,
+    totalPages,
+    totalItems
   } = useCompaniesManager();
 
   // Armazena o ID da última empresa selecionada para destacar e voltar scroll
@@ -94,12 +98,71 @@ const Companies = () => {
                 }}
               />
             ) : filteredCompanies.length > 0 ? (
-              <CompaniesListTable
-                companies={filteredCompanies}
-                onSelectCompany={setSelectedCompany}
-                onUpdateApprovalStatus={handleUpdateApprovalStatus} // Passando o novo handler
-                highlightId={lastSelectedId.current}
-              />
+              <div className="flex flex-col gap-4">
+                <CompaniesListTable
+                  companies={filteredCompanies}
+                  onSelectCompany={setSelectedCompany}
+                  onUpdateApprovalStatus={handleUpdateApprovalStatus}
+                  highlightId={lastSelectedId.current}
+                />
+                
+                {/* Paginação */}
+                {totalPages > 1 && (
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4 py-4 px-2">
+                    <p className="text-sm text-slate-500 font-medium">
+                      Mostrando <span className="text-slate-900">{(currentPage - 1) * 50 + 1}</span> a <span className="text-slate-900">{Math.min(currentPage * 50, totalItems)}</span> de <span className="text-slate-900">{totalItems}</span> empresas
+                    </p>
+                    
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                        disabled={currentPage === 1}
+                        className="p-2 rounded-lg border border-slate-200 hover:bg-white disabled:opacity-50 disabled:hover:bg-transparent transition-colors"
+                      >
+                        <span className="material-symbols-outlined text-xl">chevron_left</span>
+                      </button>
+                      
+                      <div className="flex items-center gap-1 mx-2">
+                        {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                          let pageNum;
+                          if (totalPages <= 5) {
+                            pageNum = i + 1;
+                          } else if (currentPage <= 3) {
+                            pageNum = i + 1;
+                          } else if (currentPage >= totalPages - 2) {
+                            pageNum = totalPages - 4 + i;
+                          } else {
+                            pageNum = currentPage - 2 + i;
+                          }
+                          
+                          return (
+                            <button
+                              key={pageNum}
+                              onClick={() => setCurrentPage(pageNum)}
+                              className={cn(
+                                "h-9 w-9 rounded-lg text-sm font-bold transition-all",
+                                currentPage === pageNum
+                                  ? "bg-blue-600 text-white shadow-md shadow-blue-200"
+                                  : "hover:bg-white border border-transparent hover:border-slate-200 text-slate-600"
+                              )}
+                            >
+                              {pageNum}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      <button
+                        onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                        disabled={currentPage === totalPages}
+                        className="p-2 rounded-lg border border-slate-200 hover:bg-white disabled:opacity-50 disabled:hover:bg-transparent transition-colors"
+                      >
+                        <span className="material-symbols-outlined text-xl">chevron_right</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             ) : (
               <EmptyState
                 icon={SearchX}
