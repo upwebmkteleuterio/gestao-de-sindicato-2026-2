@@ -5,12 +5,21 @@ import { toast } from "sonner";
 import { useSessionContext } from "@/contexts/SessionContext";
 import { addDays, isBefore } from "date-fns";
 
+const mapStatusToEnglish = (status: string): string => {
+  const lowerStatus = status.toLowerCase();
+  if (lowerStatus.includes('aprovad')) return 'approved'; // Aprovada, Aprovado
+  if (lowerStatus.includes('pendent')) return 'pending'; // Pendente, Pendentes
+  if (lowerStatus.includes('recusad')) return 'rejected'; // Recusada, Recusado
+  if (lowerStatus.includes('suspens')) return 'suspended'; // Suspensa, Suspenso
+  return lowerStatus; // Fallback for already English or other statuses
+};
+
 export const useCompaniesManager = () => {
   const queryClient = useQueryClient();
   const { user } = useSessionContext();
   
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("approved"); 
+  const [statusFilter, setStatusFilter] = useState("approved");
   const [employeeFilter, setEmployeeFilter] = useState("all");
   const [sortOrder, setSortOrder] = useState("asc");
 
@@ -49,7 +58,7 @@ export const useCompaniesManager = () => {
           return isBefore(limitDate, today);
         });
 
-        const normalizedStatus = (c.status || 'pending').toLowerCase();
+        const normalizedStatus = mapStatusToEnglish(c.status || 'pending');
         console.log(`[useCompaniesManager] Company: ${c.name}, Raw Status: ${c.status}, Normalized Status: ${normalizedStatus}`);
         
         let billingLabel = "Regular";
