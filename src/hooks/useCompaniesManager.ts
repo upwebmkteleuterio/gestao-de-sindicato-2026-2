@@ -105,7 +105,19 @@ export const useCompaniesManager = () => {
       const lowerSearch = searchTerm.toLowerCase();
       result = result.filter(company => company.name?.toLowerCase().includes(lowerSearch) || company.cnpj?.includes(searchTerm));
     }
-    if (statusFilter !== "all") result = result.filter(company => company.status === statusFilter);
+
+    console.log(`[useCompaniesManager] Filtering by status: ${statusFilter}`);
+
+    if (statusFilter !== "all") {
+      result = result.filter(company => {
+        const match = company.status === statusFilter;
+        if (!match) {
+          console.log(`[useCompaniesManager] Company ${company.name} status is ${company.status}, does not match ${statusFilter}`);
+        }
+        return match;
+      });
+    }
+    
     result.sort((a, b) => (sortOrder === "asc" ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name)));
     return result;
   }, [storedCompanies, searchTerm, statusFilter, sortOrder]);
