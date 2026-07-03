@@ -56,11 +56,10 @@ const ApprovalStatusBadge: React.FC<ApprovalStatusBadgeProps> = ({ companyId, cu
   };
 
   return (
-    <>
+    <div onClick={(e) => e.stopPropagation()}>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
-            onClick={(e) => e.stopPropagation()}
             variant="outline"
             size="sm"
             className={cn(
@@ -105,7 +104,7 @@ const ApprovalStatusBadge: React.FC<ApprovalStatusBadgeProps> = ({ companyId, cu
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </>
+    </div>
   );
 };
 
