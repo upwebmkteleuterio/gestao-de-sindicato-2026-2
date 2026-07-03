@@ -50,6 +50,7 @@ export const useCompaniesManager = () => {
         });
 
         const normalizedStatus = (c.status || 'pending').toLowerCase();
+        console.log(`[useCompaniesManager] Company: ${c.name}, Raw Status: ${c.status}, Normalized Status: ${normalizedStatus}`);
         
         let billingLabel = "Regular";
         let billingColor = "bg-emerald-100 text-emerald-700 border-emerald-200";
