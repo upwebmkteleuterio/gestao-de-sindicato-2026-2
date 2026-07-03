@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
 
 // --- Types ---
@@ -14,6 +15,7 @@ type SystemSettings = {
   id: string;
   sender_email_prefix: string;
   system_url: string;
+  collection_efficiency_target: number;
 };
 
 type EmailTemplate = {
@@ -107,11 +109,13 @@ const SystemConfigForm = () => {
   const updateSettings = useUpdateSystemSettings();
   const [prefix, setPrefix] = useState("");
   const [url, setUrl] = useState("");
+  const [target, setTarget] = useState(85);
 
   useEffect(() => {
     if (settings) {
       setPrefix(settings.sender_email_prefix);
       setUrl(settings.system_url);
+      setTarget(settings.collection_efficiency_target);
     }
   }, [settings]);
 
@@ -122,6 +126,7 @@ const SystemConfigForm = () => {
         id: settings.id,
         sender_email_prefix: prefix,
         system_url: url,
+        collection_efficiency_target: target,
       });
     }
   };
@@ -164,6 +169,22 @@ const SystemConfigForm = () => {
               <p className="text-xs text-gray-500">URL base usada no botão de retorno ao sistema nos e-mails.</p>
             </div>
           </div>
+          
+          <div className="space-y-2 max-w-md">
+            <Label htmlFor="collectionTarget">Meta de Eficiência de Cobrança (%)</Label>
+            <Input
+              id="collectionTarget"
+              type="number"
+              value={target}
+              onChange={(e) => setTarget(Number(e.target.value))}
+              required
+              min={0}
+              max={100}
+              className="max-w-[150px]"
+            />
+            <p className="text-xs text-gray-500">Valor percentual para a meta de cobrança exibida no Dashboard.</p>
+          </div>
+
           <Button type="submit" disabled={updateSettings.isPending}>
             {updateSettings.isPending ? "Salvando..." : "Salvar Configurações"}
           </Button>
@@ -178,6 +199,7 @@ const TemplateEditor = ({ template }: { template: EmailTemplate }) => {
   const { data: settings } = useSystemSettings();
   const [subject, setSubject] = useState(template.subject);
   const [body, setBody] = useState(template.body_html);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
   useEffect(() => {
     setSubject(template.subject);
@@ -216,57 +238,72 @@ const TemplateEditor = ({ template }: { template: EmailTemplate }) => {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{template.title} ({template.name})</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor={`subject-${template.id}`}>Assunto do E-mail</Label>
-            <Input
-              id={`subject-${template.id}`}
-              value={subject}
-              onChange={(e) => setSubject(e.target.value)}
-              required
-            />
-          </div>
-          
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Editor Column */}
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle>{template.title} ({template.name})</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor={`body-${template.id}`}>Corpo do E-mail (HTML)</Label>
+              <Label htmlFor={`subject-${template.id}`}>Assunto do E-mail</Label>
+              <Input
+                id={`subject-${template.id}`}
+                value={subject}
+                onChange={(e) => setSubject(e.target.value)}
+                required
+              />
+            </div>
+            
+            {/* Simplified Editor for Text/HTML */}
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <Label htmlFor={`body-${template.id}`}>Corpo do E-mail (HTML)</Label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsPreviewOpen(true)}
+                  className="text-xs"
+                >
+                  Ver Prévia Dinâmica
+                </Button>
+              </div>
               <Textarea
                 id={`body-${template.id}`}
                 value={body}
                 onChange={(e) => setBody(e.target.value)}
-                rows={20}
+                rows={15}
                 required
-                className="font-mono min-h-[400px]"
+                className="font-mono min-h-[300px]"
               />
               <p className="text-xs text-gray-500">
                 Placeholders disponíveis: {placeholders.join(', ')}
               </p>
             </div>
 
-            {/* Preview Column */}
-            <div className="space-y-2">
-              <Label>Pré-visualização (Simulação)</Label>
-              <div className="border rounded-lg p-4 bg-white shadow-inner min-h-[400px] overflow-y-auto">
-                <div dangerouslySetInnerHTML={{ __html: getPreviewHtml() }} />
-              </div>
-              <p className="text-xs text-gray-500">
-                A pré-visualização usa dados de exemplo e a URL do sistema configurada.
-              </p>
-            </div>
-          </div>
+            <Button type="submit" disabled={updateTemplate.isPending}>
+              {updateTemplate.isPending ? "Salvando..." : "Salvar Template"}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
 
-          <Button type="submit" disabled={updateTemplate.isPending}>
-            {updateTemplate.isPending ? "Salvando..." : "Salvar Template"}
-          </Button>
-        </form>
-      </CardContent>
-    </Card>
+      {/* Preview Modal */}
+      <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
+        <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Pré-visualização do E-mail ({template.name})</DialogTitle>
+          </DialogHeader>
+          <div className="p-4 border rounded-lg bg-gray-50">
+            <p className="text-sm text-gray-600 mb-3">
+              **Esta pré-visualização usa dados de exemplo e a URL do sistema configurada.**
+            </p>
+            <div className="bg-white p-4 shadow-lg rounded-lg" dangerouslySetInnerHTML={{ __html: getPreviewHtml() }} />
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };
 

@@ -44,56 +44,35 @@ const DashboardStats = () => {
   }
 
   const stats: Stat[] = [
-    { 
-      label: "Total de Empresas", 
-      value: data?.stats.totalCompanies ?? 0, 
-      sub: "cadastradas", 
-      icon: "domain", 
+    {
+      label: "Total de Empresas",
+      value: data?.stats.totalCompanies ?? 0,
+      sub: "cadastradas",
+      icon: "domain",
       bgColor: "bg-blue-50",
     },
-    { 
-      label: "Total de Vidas", 
-      value: data?.stats.totalEmployees ?? 0, 
-      sub: "colaboradores", 
-      icon: "groups", 
+    {
+      label: "Total de Vidas",
+      value: data?.stats.totalEmployees ?? 0,
+      sub: "colaboradores",
+      icon: "groups",
       bgColor: "bg-blue-50",
     },
-    { 
-      label: "Receita Total (Paga)", 
-      value: formatCurrency(data?.stats.totalRevenue ?? 0), 
-      sub: "acumulada", 
-      icon: "payments", 
+    {
+      label: "Receita Total (Paga)",
+      value: formatCurrency(data?.stats.totalRevenue ?? 0),
+      sub: "acumulada",
+      icon: "payments",
       bgColor: "bg-emerald-50",
       iconColor: "text-emerald-600",
     },
-    { 
-      label: "Receita Pendente", 
-      value: formatCurrency(data?.stats.pendingRevenue ?? 0), 
-      sub: "em aberto", 
-      icon: "warning", 
+    {
+      label: "Receita Pendente",
+      value: formatCurrency(data?.stats.pendingRevenue ?? 0),
+      sub: "em aberto",
+      icon: "warning",
       bgColor: "bg-red-50",
       iconColor: "text-red-600",
-    },
-    // Mantendo os demais hardcoded por falta de dados de origem no banco
-    { 
-      label: "Eficiência de Cobrança", 
-      value: "28%", 
-      sub: "Meta: 85%", 
-      icon: "trending_down", 
-      bgColor: "bg-amber-50",
-      iconColor: "text-amber-600",
-      trend: "-2%",
-      trendColor: "text-amber-700 bg-amber-100"
-    },
-    { 
-      label: "Cadastros Desatualizados", 
-      value: "312", 
-      sub: "> 30 dias", 
-      icon: "sync_problem", 
-      bgColor: "bg-indigo-50",
-      iconColor: "text-indigo-600",
-      trend: "Crítico",
-      trendColor: "text-indigo-700 bg-indigo-100"
     },
   ];
 
