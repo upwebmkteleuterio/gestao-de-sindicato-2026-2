@@ -27,6 +27,7 @@ const RevenueChart = () => {
   const chartHeight = 300;
   const paddingBottom = 50;
   const chartAreaHeight = chartHeight - paddingBottom;
+  const columnWidth = chartWidth / monthlyData.length;
 
   // 1. Calculate data points
   const collectedPoints = monthlyData.map((d, index) => ({
@@ -120,11 +121,12 @@ const RevenueChart = () => {
             
             {/* Hover Points (Invisible hit areas for Tooltip) */}
             {collectedPoints.map((point, index) => (
-                <circle
+                <rect
                     key={index}
-                    cx={point.x}
-                    cy={chartAreaHeight / 2} // Center of the chart area for easier hover
-                    r={chartWidth / (monthlyData.length * 2)} // Radius based on spacing
+                    x={index * columnWidth}
+                    y={0}
+                    width={columnWidth}
+                    height={chartAreaHeight}
                     fill="transparent"
                     onMouseEnter={() => setHoveredIndex(index)}
                     onMouseLeave={() => setHoveredIndex(null)}
