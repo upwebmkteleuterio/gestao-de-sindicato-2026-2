@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { cn } from "@/lib/utils";
 import CompaniesHeader from "@/components/admin/companies/CompaniesHeader";
 import CompaniesListTable from "@/components/admin/companies/CompaniesListTable";
 import CompanyDetailsView from "@/components/admin/companies/CompanyDetailsView";
