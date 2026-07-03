@@ -155,12 +155,12 @@ const RevenueChart = () => {
 
           {/* Tooltip Component (Outside SVG for easier styling) */}
           {hoveredData && hoveredPoint && (
-            <div 
+            <div
                 className={cn(
-                    "absolute bg-slate-900 text-white p-3 rounded-lg shadow-xl transition-opacity duration-200 z-50",
+                    "absolute bg-slate-900 text-white p-2 rounded-lg shadow-xl transition-opacity duration-200 z-50 w-max",
                     hoveredPoint.x > chartWidth / 2 ? "right-0" : "left-0" // Position tooltip to avoid overflow
                 )}
-                style={{ 
+                style={{
                     top: hoveredPoint.y * (256 / chartHeight) - 100, // Scale Y position to actual div height (256px)
                     transform: `translateX(${hoveredPoint.x * (800 / chartWidth)}px) translateX(-50%)`,
                     left: 0,
