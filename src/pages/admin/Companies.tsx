@@ -119,6 +119,7 @@ const Companies = () => {
               employees={currentCompanyEmployees}
               onSelectEmployee={setSelectedEmployee}
               onEditCompany={handleEditCompany}
+              onDeleteCompany={handleDeleteCompany}
             />
           )}
         </div>

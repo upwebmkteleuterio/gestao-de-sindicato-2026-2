@@ -3,7 +3,9 @@
 import React, { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Edit2, Phone, MessageSquare, History, Receipt, Users as UsersIcon, DollarSign } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Edit2, Phone, MessageSquare, History, Receipt, Users as UsersIcon, DollarSign, MoreVertical, Trash2 } from "lucide-react";
 import ManualDebtModal from "./ManualDebtModal";
 import CollectInvoicesModal from "./CollectInvoicesModal";
 import AdminInvoicesTable from "./AdminInvoicesTable";
@@ -15,13 +17,15 @@ interface CompanyDetailsViewProps {
   employees: any[];
   onSelectEmployee: (employee: any) => void;
   onEditCompany: (company: any) => void;
+  onDeleteCompany: (id: string) => void;
 }
 
 const CompanyDetailsView: React.FC<CompanyDetailsViewProps> = ({
   company,
   employees,
   onSelectEmployee,
-  onEditCompany
+  onEditCompany,
+  onDeleteCompany
 }) => {
   const [isManualDebtOpen, setIsManualDebtOpen] = useState(false);
   const [isCollectModalOpen, setIsCollectModalOpen] = useState(false);
@@ -33,15 +37,45 @@ const CompanyDetailsView: React.FC<CompanyDetailsViewProps> = ({
         <div className="md:col-span-2 bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
           <div className="flex items-center justify-between mb-6 border-b border-slate-50 pb-2">
             <h3 className="text-lg font-bold text-slate-900">Informações Cadastrais</h3>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="gap-2 h-8 text-xs font-bold border-blue-100 text-blue-600 hover:bg-blue-50"
-              onClick={() => onEditCompany(company)}
-            >
-              <Edit2 size={14} />
-              Editar Dados
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="icon" className="h-8 w-8 text-slate-600">
+                  <MoreVertical size={16} />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => onEditCompany(company)} className="gap-2">
+                  <Edit2 size={14} />
+                  Editar Dados
+                </DropdownMenuItem>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="gap-2 text-red-600 focus:text-red-600">
+                      <Trash2 size={14} />
+                      Excluir Empresa
+                    </DropdownMenuItem>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Esta ação excluirá permanentemente os dados da empresa
+                        <strong> {company.name}</strong>.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={() => onDeleteCompany(company.id)}
+                        className="bg-red-600 hover:bg-red-700"
+                      >
+                        Sim, Excluir
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
           
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-6 gap-x-8">

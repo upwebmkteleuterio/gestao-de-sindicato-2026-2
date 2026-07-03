@@ -88,39 +88,7 @@ const CompaniesHeader: React.FC<CompaniesHeaderProps> = ({
                 </button>
               </>
             ) : (
-              <>
-                <button className="flex items-center gap-2 h-10 px-4 bg-red-600 text-white rounded-xl text-sm font-bold hover:bg-red-700 transition-all shadow-lg shadow-red-500/20">
-                  <span className="material-symbols-outlined text-lg">campaign</span>
-                  Cobrar
-                </button>
-                
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <button className="flex items-center gap-2 h-10 px-4 bg-white border border-red-200 text-red-600 rounded-xl text-sm font-bold hover:bg-red-50 transition-all">
-                      <span className="material-symbols-outlined text-lg">delete</span>
-                      Remover
-                    </button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        Esta ação excluirá permanentemente os dados da empresa
-                        <strong> {selectedCompany.name}</strong>.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                      <AlertDialogAction 
-                        onClick={() => onDeleteCompany(selectedCompany.id)}
-                        className="bg-red-600 hover:bg-red-700"
-                      >
-                        Sim, Remover
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              </>
+              <></>
             )}
           </div>
         </div>
