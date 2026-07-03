@@ -288,9 +288,20 @@ const ImportCompanies = () => {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">-- Não importar --</SelectItem>
-                      {headers.map((h, i) => (
-                        <SelectItem key={i} value={i.toString()}>{h || `Coluna ${i + 1}`}</SelectItem>
-                      ))}
+                      {headers.map((h, i) => {
+                        const sampleValue = rawData[0]?.[i] || "";
+                        const truncatedSample = sampleValue.length > 20 ? sampleValue.substring(0, 20) + "..." : sampleValue;
+                        return (
+                          <SelectItem key={i} value={i.toString()}>
+                            <div className="flex flex-col">
+                              <span className="font-medium">{h || `Coluna ${i + 1}`} (Col. {i + 1})</span>
+                              {sampleValue && (
+                                <span className="text-[10px] text-slate-400 italic">Ex: {truncatedSample}</span>
+                              )}
+                            </div>
+                          </SelectItem>
+                        );
+                      })}
                     </SelectContent>
                   </Select>
                 </div>
