@@ -3,6 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { Loader2 } from "lucide-react";
+import { useAdminDashboardData } from "@/hooks/useAdminDashboardData";
+import { formatCurrency } from "@/utils/formatters";
 
 interface Stat {
   label: string;
@@ -13,83 +15,66 @@ interface Stat {
   trendColor?: string;
   bgColor: string;
   iconColor?: string;
-  isLoading?: boolean;
 }
 
 const DashboardStats = () => {
-  // 1. Busca contagem total de empresas
-  const { data: totalCompanies, isLoading: loadingCompanies } = useQuery({
-    queryKey: ["admin-stats-companies"],
-    queryFn: async () => {
-      const { count, error } = await supabase
-        .from("companies")
-        .select("*", { count: 'exact', head: true });
-      if (error) throw error;
-      return count || 0;
-    }
-  });
+  const { data, isLoading, error } = useAdminDashboardData();
 
-  // 2. Busca contagem total de funcionários (Vidas)
-  const { data: totalEmployees, isLoading: loadingEmployees } = useQuery({
-    queryKey: ["admin-stats-employees"],
-    queryFn: async () => {
-      const { count, error } = await supabase
-        .from("employees")
-        .select("*", { count: 'exact', head: true });
-      if (error) throw error;
-      return count || 0;
-    }
-  });
+  if (isLoading) {
+    // Return a loading state that looks like the stats grid
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+        {[1, 2, 3, 4, 5, 6].map((i) => (
+          <div key={i} className="bg-white rounded-2xl border border-slate-200 p-6 flex flex-col shadow-sm relative overflow-hidden">
+            <div className="flex items-center justify-between mb-3 relative z-10">
+              <Loader2 className="animate-spin size-6 text-blue-600" />
+            </div>
+            <h3 className="text-slate-500 text-xs font-bold uppercase tracking-widest relative z-10">Carregando...</h3>
+            <div className="mt-1 flex items-baseline gap-2 relative z-10">
+              <span className="text-3xl font-black text-slate-300 tracking-tight">...</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
 
-  // 3. Busca contagem de aprovações pendentes
-  const { data: pendingApprovals, isLoading: loadingPending } = useQuery({
-    queryKey: ["admin-stats-pending"],
-    queryFn: async () => {
-      const { count, error } = await supabase
-        .from("companies")
-        .select("*", { count: 'exact', head: true })
-        .eq("status", "pending");
-      if (error) throw error;
-      return count || 0;
-    }
-  });
+  if (error) {
+    return <div className="p-6 bg-red-100 border border-red-400 rounded-lg text-red-700">Erro ao carregar dados do dashboard: {error.message}</div>;
+  }
 
   const stats: Stat[] = [
     { 
       label: "Total de Empresas", 
-      value: totalCompanies ?? 0, 
+      value: data?.stats.totalCompanies ?? 0, 
       sub: "cadastradas", 
       icon: "domain", 
       bgColor: "bg-blue-50",
-      isLoading: loadingCompanies
     },
     { 
       label: "Total de Vidas", 
-      value: totalEmployees ?? 0, 
+      value: data?.stats.totalEmployees ?? 0, 
       sub: "colaboradores", 
       icon: "groups", 
       bgColor: "bg-blue-50",
-      isLoading: loadingEmployees
     },
     { 
-      label: "Aprovações Pendentes", 
-      value: pendingApprovals ?? 0, 
-      sub: "em análise", 
-      icon: "pending_actions", 
-      bgColor: "bg-amber-50",
-      iconColor: "text-amber-600",
-      isLoading: loadingPending
+      label: "Receita Total (Paga)", 
+      value: formatCurrency(data?.stats.totalRevenue ?? 0), 
+      sub: "acumulada", 
+      icon: "payments", 
+      bgColor: "bg-emerald-50",
+      iconColor: "text-emerald-600",
     },
     { 
-      label: "Receita em Atraso", 
-      value: "R$ 1.2M", 
-      sub: "842 empresas", 
+      label: "Receita Pendente", 
+      value: formatCurrency(data?.stats.pendingRevenue ?? 0), 
+      sub: "em aberto", 
       icon: "warning", 
       bgColor: "bg-red-50",
       iconColor: "text-red-600",
-      trend: "+5%",
-      trendColor: "text-red-700 bg-red-100"
     },
+    // Mantendo os demais hardcoded por falta de dados de origem no banco
     { 
       label: "Eficiência de Cobrança", 
       value: "28%", 
@@ -134,7 +119,7 @@ const DashboardStats = () => {
           </div>
           <h3 className="text-slate-500 text-xs font-bold uppercase tracking-widest relative z-10">{stat.label}</h3>
           <div className="mt-1 flex items-baseline gap-2 relative z-10">
-            {stat.isLoading ? (
+            {isLoading ? (
               <Loader2 className="animate-spin size-6 text-slate-300" />
             ) : (
               <span className="text-3xl font-black text-slate-900 tracking-tight">{stat.value}</span>

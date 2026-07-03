@@ -3,7 +3,6 @@
 import React, { useState } from "react";
 import DashboardStats from "@/components/admin/dashboard/DashboardStats";
 import RevenueChart from "@/components/admin/dashboard/RevenueChart";
-import QuickActions from "@/components/admin/dashboard/QuickActions";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
@@ -59,15 +58,10 @@ const AdminDashboard = () => {
         <DashboardStats />
 
         {/* Main Sections */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in slide-in-from-top-4 duration-700 delay-500 fill-mode-both">
-          {/* Charts column */}
-          <div className="lg:col-span-2 flex flex-col gap-6">
-            <RevenueChart />
-          </div>
-
-          {/* Actions column */}
+        <div className="grid grid-cols-1 gap-6 animate-in fade-in slide-in-from-top-4 duration-700 delay-500 fill-mode-both">
+          {/* Charts column (Full Width) */}
           <div className="flex flex-col gap-6">
-            <QuickActions />
+            <RevenueChart />
           </div>
         </div>
       </div>

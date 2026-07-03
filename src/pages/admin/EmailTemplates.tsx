@@ -175,6 +175,7 @@ const SystemConfigForm = () => {
 
 const TemplateEditor = ({ template }: { template: EmailTemplate }) => {
   const updateTemplate = useUpdateEmailTemplate();
+  const { data: settings } = useSystemSettings();
   const [subject, setSubject] = useState(template.subject);
   const [body, setBody] = useState(template.body_html);
 
@@ -196,6 +197,24 @@ const TemplateEditor = ({ template }: { template: EmailTemplate }) => {
     ? ['[NOME_EMPRESA]', '[CNPJ]', '[VALOR_FATURA]', '[DATA_VENCIMENTO]', '[URL_SISTEMA]']
     : ['[NOME_EMPRESA]', '[CNPJ]', '[LISTA_FATURAS]', '[URL_SISTEMA]'];
 
+  // Function to replace placeholders with sample data for preview
+  const getPreviewHtml = () => {
+    let previewHtml = body;
+    const sampleData = {
+      '[NOME_EMPRESA]': 'Empresa Exemplo S.A.',
+      '[CNPJ]': '12.345.678/0001-90',
+      '[VALOR_FATURA]': 'R$ 1.500,00',
+      '[DATA_VENCIMENTO]': '30/12/2024',
+      '[URL_SISTEMA]': settings?.system_url || 'https://seu-sistema.com.br',
+      '[LISTA_FATURAS]': '<li>Fatura 1: R$ 500,00 (Vencimento: 01/10/2024)</li><li>Fatura 2: R$ 1.000,00 (Vencimento: 01/11/2024)</li>',
+    };
+
+    for (const [key, value] of Object.entries(sampleData)) {
+      previewHtml = previewHtml.replace(new RegExp(key.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&'), 'g'), value);
+    }
+    return previewHtml;
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -212,20 +231,36 @@ const TemplateEditor = ({ template }: { template: EmailTemplate }) => {
               required
             />
           </div>
-          <div className="space-y-2">
-            <Label htmlFor={`body-${template.id}`}>Corpo do E-mail (HTML)</Label>
-            <Textarea
-              id={`body-${template.id}`}
-              value={body}
-              onChange={(e) => setBody(e.target.value)}
-              rows={10}
-              required
-              className="font-mono"
-            />
-            <p className="text-xs text-gray-500">
-              Placeholders disponíveis: {placeholders.join(', ')}
-            </p>
+          
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Editor Column */}
+            <div className="space-y-2">
+              <Label htmlFor={`body-${template.id}`}>Corpo do E-mail (HTML)</Label>
+              <Textarea
+                id={`body-${template.id}`}
+                value={body}
+                onChange={(e) => setBody(e.target.value)}
+                rows={20}
+                required
+                className="font-mono min-h-[400px]"
+              />
+              <p className="text-xs text-gray-500">
+                Placeholders disponíveis: {placeholders.join(', ')}
+              </p>
+            </div>
+
+            {/* Preview Column */}
+            <div className="space-y-2">
+              <Label>Pré-visualização (Simulação)</Label>
+              <div className="border rounded-lg p-4 bg-white shadow-inner min-h-[400px] overflow-y-auto">
+                <div dangerouslySetInnerHTML={{ __html: getPreviewHtml() }} />
+              </div>
+              <p className="text-xs text-gray-500">
+                A pré-visualização usa dados de exemplo e a URL do sistema configurada.
+              </p>
+            </div>
           </div>
+
           <Button type="submit" disabled={updateTemplate.isPending}>
             {updateTemplate.isPending ? "Salvando..." : "Salvar Template"}
           </Button>
