@@ -60,6 +60,7 @@ const ApprovalStatusBadge: React.FC<ApprovalStatusBadgeProps> = ({ companyId, cu
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
+            onClick={(e) => e.stopPropagation()}
             variant="outline"
             size="sm"
             className={cn(
