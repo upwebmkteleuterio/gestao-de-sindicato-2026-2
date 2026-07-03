@@ -13,7 +13,7 @@ export const useApprovals = () => {
       const { data, error } = await supabase
         .from("companies")
         .select("*")
-        .eq("status", "pending")
+        .in("status", ["pending", "Pendente"])
         .order("created_at", { ascending: true });
 
       if (error) throw error;

@@ -6,12 +6,13 @@ import { useSessionContext } from "@/contexts/SessionContext";
 import { addDays, isBefore } from "date-fns";
 
 const mapStatusToEnglish = (status: string): string => {
-  const lowerStatus = status.toLowerCase();
-  if (lowerStatus.includes('aprovad')) return 'approved'; // Aprovada, Aprovado
-  if (lowerStatus.includes('pendent')) return 'pending'; // Pendente, Pendentes
-  if (lowerStatus.includes('recusad')) return 'rejected'; // Recusada, Recusado
-  if (lowerStatus.includes('suspens')) return 'suspended'; // Suspensa, Suspenso
-  return lowerStatus; // Fallback for already English or other statuses
+  if (!status) return 'pending';
+  const s = status.toLowerCase().trim();
+  if (s === 'pending' || s.includes('pendent')) return 'pending';
+  if (s === 'approved' || s.includes('aprovad')) return 'approved';
+  if (s === 'rejected' || s.includes('recusad')) return 'rejected';
+  if (s === 'suspended' || s.includes('suspens')) return 'suspended';
+  return s;
 };
 
 export const useCompaniesManager = () => {
@@ -29,18 +30,43 @@ export const useCompaniesManager = () => {
   const [companyToEdit, setCompanyToEdit] = useState<any | null>(null);
 
   const { data: storedCompanies = [], isLoading: isLoadingCompanies } = useQuery({
-    queryKey: ["admin-companies"],
+    queryKey: ["admin-companies", searchTerm, statusFilter, sortOrder],
     queryFn: async () => {
       // 1. Busca configurações para saber a carência
       const { data: settings } = await supabase.from('financial_settings').select('grace_period_days').order('updated_at', { ascending: false }).limit(1).single();
       const graceDays = settings?.grace_period_days || 0;
 
-      // 2. Busca dados brutos
-      const { data: companiesData, error: compErr } = await supabase.from("companies").select("*");
+      // 2. Busca dados brutos com filtro no servidor
+      let query = supabase.from("companies").select("*");
+      
+      if (searchTerm) {
+        query = query.or(`name.ilike.%${searchTerm}%,cnpj.ilike.%${searchTerm}%`);
+      }
+      
+      if (statusFilter !== "all") {
+        if (statusFilter === "pending") {
+          query = query.in("status", ["pending", "Pendente"]);
+        } else if (statusFilter === "approved") {
+          query = query.in("status", ["approved", "Aprovado", "Aprovada"]);
+        } else if (statusFilter === "rejected") {
+          query = query.in("status", ["rejected", "Recusado", "Recusada"]);
+        } else {
+          query = query.eq("status", statusFilter);
+        }
+      }
+
+      // Ordenação no servidor
+      query = query.order("name", { ascending: sortOrder === "asc" });
+
+      const { data: companiesData, error: compErr } = await query;
       if (compErr) throw compErr;
 
-      const { data: counts } = await supabase.from("employees").select("company_id");
-      const { data: invoices } = await supabase.from("invoices").select("*");
+      // Limitamos o processamento pesado apenas para os dados retornados (máx 1000 por padrão do Supabase)
+      const companyIds = (companiesData || []).map(c => c.id);
+      
+      // Busca contagens e faturas apenas para as empresas da página atual/filtro
+      const { data: counts } = await supabase.from("employees").select("company_id").in("company_id", companyIds);
+      const { data: invoices } = await supabase.from("invoices").select("*").in("company_id", companyIds);
       
       return (companiesData || []).map(c => {
         const count = counts?.filter(e => e.company_id === c.id).length || 0;
@@ -50,7 +76,6 @@ export const useCompaniesManager = () => {
           .filter(inv => inv.status !== 'Pago')
           .reduce((acc, inv) => acc + Number(inv.amount), 0);
 
-        // NOVA LÓGICA: Só é considerado atrasado se passar da data de vencimento + carência
         const today = new Date();
         const hasCriticalOverdue = companyInvoices.some(inv => {
           if (inv.status === 'Pago') return false;
@@ -59,13 +84,11 @@ export const useCompaniesManager = () => {
         });
 
         const normalizedStatus = mapStatusToEnglish(c.status || 'pending');
-        console.log(`[useCompaniesManager] Company: ${c.name}, Raw Status: ${c.status}, Normalized Status: ${normalizedStatus}`);
         
         let billingLabel = "Regular";
         let billingColor = "bg-emerald-100 text-emerald-700 border-emerald-200";
 
         if (totalDebt > 0) {
-          // Só fica vermelho (Inadimplente) se tiver ultrapassado a carência
           billingLabel = hasCriticalOverdue ? "Inadimplente" : "A Vencer";
           billingColor = hasCriticalOverdue
             ? "bg-red-100 text-red-700 border-red-200"
@@ -78,7 +101,7 @@ export const useCompaniesManager = () => {
         return {
           ...c,
           status: normalizedStatus,
-          approvalStatus: normalizedStatus, // Adicionado o status de aprovação
+          approvalStatus: normalizedStatus,
           representativeName: c.representative_name,
           representativeCpf: c.representative_cpf,
           zipCode: c.zip_code,
@@ -87,7 +110,7 @@ export const useCompaniesManager = () => {
           billingStatus: billingLabel,
           sColor: billingColor,
           debt: new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalDebt),
-          lastUpdate: c.updated_at || new Date().toISOString() // Corrigido para usar a data real
+          lastUpdate: c.updated_at || new Date().toISOString()
         };
       });
     },
@@ -110,27 +133,23 @@ export const useCompaniesManager = () => {
   });
 
   const filteredCompanies = useMemo(() => {
+    // A filtragem agora é feita no servidor, então retornamos os dados processados
+    // O employeeFilter ainda é feito em memória se necessário, ou podemos adicionar ao servidor também
     let result = [...storedCompanies];
-    if (searchTerm) {
-      const lowerSearch = searchTerm.toLowerCase();
-      result = result.filter(company => company.name?.toLowerCase().includes(lowerSearch) || company.cnpj?.includes(searchTerm));
-    }
-
-    console.log(`[useCompaniesManager] Filtering by status: ${statusFilter}`);
-
-    if (statusFilter !== "all") {
+    
+    if (employeeFilter !== "all") {
       result = result.filter(company => {
-        const match = company.status === statusFilter;
-        if (!match) {
-          console.log(`[useCompaniesManager] Company ${company.name} status is ${company.status}, does not match ${statusFilter}`);
-        }
-        return match;
+        const count = company.employeesCount;
+        if (employeeFilter === "0-10") return count <= 10;
+        if (employeeFilter === "11-50") return count > 10 && count <= 50;
+        if (employeeFilter === "51-200") return count > 50 && count <= 200;
+        if (employeeFilter === "201+") return count > 200;
+        return true;
       });
     }
     
-    result.sort((a, b) => (sortOrder === "asc" ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name)));
     return result;
-  }, [storedCompanies, searchTerm, statusFilter, sortOrder]);
+  }, [storedCompanies, employeeFilter]);
 
   const saveCompanyMutation = useMutation({
     mutationFn: async (companyData: any) => {
