@@ -57,8 +57,8 @@ export const useCompaniesManager = () => {
         if (totalDebt > 0) {
           // Só fica vermelho (Inadimplente) se tiver ultrapassado a carência
           billingLabel = hasCriticalOverdue ? "Inadimplente" : "A Vencer";
-          billingColor = hasCriticalOverdue 
-            ? "bg-red-100 text-red-700 border-red-200" 
+          billingColor = hasCriticalOverdue
+            ? "bg-red-100 text-red-700 border-red-200"
             : "bg-blue-100 text-blue-700 border-blue-200";
         } else if (normalizedStatus !== 'approved') {
           billingLabel = normalizedStatus === 'pending' ? "Em Análise" : "Recusado";
@@ -68,6 +68,7 @@ export const useCompaniesManager = () => {
         return {
           ...c,
           status: normalizedStatus,
+          approvalStatus: normalizedStatus, // Adicionado o status de aprovação
           representativeName: c.representative_name,
           representativeCpf: c.representative_cpf,
           zipCode: c.zip_code,
@@ -76,14 +77,14 @@ export const useCompaniesManager = () => {
           billingStatus: billingLabel,
           sColor: billingColor,
           debt: new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(totalDebt),
-          lastUpdate: "Atualizado agora"
+          lastUpdate: c.updated_at || new Date().toISOString() // Corrigido para usar a data real
         };
       });
     },
-    enabled: !!user, 
+    enabled: !!user,
   });
 
-  const selectedCompany = useMemo(() => 
+  const selectedCompany = useMemo(() =>
     storedCompanies.find(c => c.id === selectedCompanyId) || null,
   [storedCompanies, selectedCompanyId]);
 
@@ -129,12 +130,31 @@ export const useCompaniesManager = () => {
     }
   });
 
+  const updateApprovalStatusMutation = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+      const { data, error } = await supabase.from("companies").update({ status }).eq("id", id).select().single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["admin-companies"] });
+      toast.success(`Status da empresa ${data.name} atualizado para ${data.status}.`);
+    },
+    onError: (error) => {
+      toast.error(`Erro ao atualizar status: ${error.message}`);
+    }
+  });
+
+  const handleUpdateApprovalStatus = (companyId: string, newStatus: string) => {
+    updateApprovalStatusMutation.mutate({ id: companyId, status: newStatus });
+  };
+
   return {
     searchTerm, setSearchTerm,
     statusFilter, setStatusFilter,
     employeeFilter, setEmployeeFilter,
     sortOrder, setSortOrder,
-    selectedCompany, 
+    selectedCompany,
     setSelectedCompany: (c: any) => setSelectedCompanyId(c?.id || null),
     selectedEmployee, setSelectedEmployee,
     isNewModalOpen, setIsNewModalOpen,
@@ -147,6 +167,7 @@ export const useCompaniesManager = () => {
     saveCompany: (data: any) => saveCompanyMutation.mutate(data),
     isSavingCompany: saveCompanyMutation.isPending,
     handleEditCompany: (company: any) => { setCompanyToEdit(company); setIsNewModalOpen(true); },
-    handleCloseModal: () => { setIsNewModalOpen(false); setCompanyToEdit(null); }
+    handleCloseModal: () => { setIsNewModalOpen(false); setCompanyToEdit(null); },
+    handleUpdateApprovalStatus,
   };
 };

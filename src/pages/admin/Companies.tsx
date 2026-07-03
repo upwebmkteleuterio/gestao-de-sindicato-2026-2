@@ -30,7 +30,8 @@ const Companies = () => {
     isLoading,
     handleDeleteCompany,
     handleEditCompany,
-    handleCloseModal
+    handleCloseModal,
+    handleUpdateApprovalStatus // Novo handler
   } = useCompaniesManager();
 
   // Armazena o ID da última empresa selecionada para destacar e voltar scroll
@@ -96,6 +97,7 @@ const Companies = () => {
               <CompaniesListTable
                 companies={filteredCompanies}
                 onSelectCompany={setSelectedCompany}
+                onUpdateApprovalStatus={handleUpdateApprovalStatus} // Passando o novo handler
                 highlightId={lastSelectedId.current}
               />
             ) : (

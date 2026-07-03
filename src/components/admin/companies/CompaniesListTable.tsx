@@ -1,13 +1,15 @@
 import React from "react";
-import { cn } from "@/lib/utils";
+import { cn, formatRelativeTime } from "@/lib/utils";
+import ApprovalStatusBadge from "./ApprovalStatusBadge";
 
 interface CompaniesListTableProps {
   companies: any[];
   onSelectCompany: (company: any) => void;
+  onUpdateApprovalStatus: (companyId: string, newStatus: string) => void; // New prop
   highlightId?: string | null;
 }
 
-const CompaniesListTable: React.FC<CompaniesListTableProps> = ({ companies, onSelectCompany, highlightId }) => {
+const CompaniesListTable: React.FC<CompaniesListTableProps> = ({ companies, onSelectCompany, onUpdateApprovalStatus, highlightId }) => {
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
       <div className="overflow-x-auto">
@@ -17,13 +19,18 @@ const CompaniesListTable: React.FC<CompaniesListTableProps> = ({ companies, onSe
               <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Empresa / CNPJ</th>
               <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-widest text-center">Membros</th>
               <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Saúde Cadastral</th>
-              <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Status Cobrança</th>
+              <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Status Financeiro</th> {/* Changed from Cobrança */}
+              <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Status Aprovação</th> {/* New column */}
               <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-widest text-right">Dívida</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
             {companies.map((company, i) => {
               const isHighlighted = highlightId === company.id;
+              const lastUpdateDate = new Date(company.lastUpdate);
+              // Health is critical if the last update was more than 30 days ago
+              const isCriticalHealth = (new Date().getTime() - lastUpdateDate.getTime()) > (30 * 24 * 60 * 60 * 1000); 
+
               return (
                 <tr
                   key={i}
@@ -55,11 +62,11 @@ const CompaniesListTable: React.FC<CompaniesListTableProps> = ({ companies, onSe
                   <td className="p-4">
                     <span className={cn(
                       "text-xs font-bold px-2 py-1 rounded-lg",
-                      company.lastUpdate.includes('45') || company.lastUpdate.includes('60')
+                      isCriticalHealth
                         ? "text-red-600 bg-red-50"
                         : "text-emerald-600 bg-emerald-50"
                     )}>
-                      {company.lastUpdate}
+                      {formatRelativeTime(company.lastUpdate)}
                     </span>
                   </td>
                   <td className="p-4">
@@ -69,6 +76,13 @@ const CompaniesListTable: React.FC<CompaniesListTableProps> = ({ companies, onSe
                     )}>
                       {company.billingStatus}
                     </span>
+                  </td>
+                  <td className="p-4">
+                    <ApprovalStatusBadge
+                      companyId={company.id}
+                      currentStatus={company.approvalStatus || 'pending'} // Assuming a default status
+                      onUpdate={onUpdateApprovalStatus}
+                    />
                   </td>
                   <td className="p-4 text-right">
                     <p className={cn(
