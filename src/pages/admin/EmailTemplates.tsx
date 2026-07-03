@@ -4,8 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import RichTextEditor from "@/components/RichTextEditor";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
@@ -258,7 +258,7 @@ const TemplateEditor = ({ template }: { template: EmailTemplate }) => {
             {/* Simplified Editor for Text/HTML */}
             <div className="space-y-2">
               <div className="flex justify-between items-center">
-                <Label htmlFor={`body-${template.id}`}>Corpo do E-mail (HTML)</Label>
+                <Label htmlFor={`body-${template.id}`}>Corpo do E-mail (Visual)</Label>
                 <Button
                   type="button"
                   variant="outline"
@@ -269,13 +269,10 @@ const TemplateEditor = ({ template }: { template: EmailTemplate }) => {
                   Ver Prévia Dinâmica
                 </Button>
               </div>
-              <Textarea
-                id={`body-${template.id}`}
+              <RichTextEditor
                 value={body}
-                onChange={(e) => setBody(e.target.value)}
-                rows={15}
-                required
-                className="font-mono min-h-[300px]"
+                onChange={setBody}
+                className="min-h-[300px]"
               />
               <p className="text-xs text-gray-500">
                 Placeholders disponíveis: {placeholders.join(', ')}
