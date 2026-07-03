@@ -11,9 +11,10 @@ let sidebarScrollPos = 0;
 
 interface SidebarProps {
   onClose?: () => void;
+  isCollapsed?: boolean;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
+const Sidebar: React.FC<SidebarProps> = ({ onClose, isCollapsed }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, signOut } = useSessionContext();
@@ -75,7 +76,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
 
   const NavSection = ({ title, items, colorClass }: { title: string, items: any[], colorClass?: string }) => (
     <div className="flex flex-col gap-1 mb-6">
-      <p className={cn("px-3 text-[10px] font-bold uppercase tracking-widest mb-2 opacity-70", colorClass || "text-slate-50")}>{title}</p>
+      {title && <p className={cn("px-3 text-[10px] font-bold uppercase tracking-widest mb-2 opacity-70", colorClass || "text-slate-50")}>{title}</p>}
       {items.map((item) => {
         const isActive = location.pathname === item.path;
         return (
@@ -83,11 +84,13 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
             key={item.path}
             to={item.path}
             onClick={onClose}
+            title={isCollapsed ? item.label : undefined}
             className={cn(
               "flex items-center gap-3 px-3 h-10 rounded-lg transition-all duration-200 group overflow-hidden shrink-0",
-              isActive 
+              isActive
                 ? "bg-blue-600 text-white shadow-md"
-                : "text-slate-400 hover:bg-slate-800 hover:text-white"
+                : "text-slate-400 hover:bg-slate-800 hover:text-white",
+              isCollapsed && "justify-center px-0"
             )}
           >
             <span className={cn(
@@ -96,9 +99,11 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
             )}>
               {item.icon}
             </span>
-            <span className={cn("text-sm truncate", isActive ? "font-bold" : "font-semibold")}>
-              {item.label}
-            </span>
+            {!isCollapsed && (
+              <span className={cn("text-sm truncate animate-in fade-in slide-in-from-left-2 duration-300", isActive ? "font-bold" : "font-semibold")}>
+                {item.label}
+              </span>
+            )}
           </Link>
         );
       })}
@@ -119,18 +124,23 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
   );
 
   return (
-    <aside className="flex h-full w-full flex-col bg-slate-900 text-white border-r border-slate-800">
-      <div className="flex items-center gap-3 px-6 py-6 border-b border-slate-800 shrink-0">
-        <div className="bg-blue-500/20 rounded-lg p-2 flex items-center justify-center">
+    <aside className="flex h-full w-full flex-col bg-slate-900 text-white border-r border-slate-800 transition-all duration-300">
+      <div className={cn(
+        "flex items-center gap-3 px-6 py-6 border-b border-slate-800 shrink-0 overflow-hidden",
+        isCollapsed && "px-4 justify-center"
+      )}>
+        <div className="bg-blue-500/20 rounded-lg p-2 flex items-center justify-center shrink-0">
           <span className="material-symbols-outlined text-blue-400 text-2xl">shield_person</span>
         </div>
-        <div className="flex flex-col">
-          <h1 className="text-white text-base font-bold leading-none">Gestão Sindical</h1>
-          <p className="text-slate-400 text-[10px] font-bold mt-1 uppercase tracking-tighter">Sistema Unificado</p>
-        </div>
+        {!isCollapsed && (
+          <div className="flex flex-col animate-in fade-in slide-in-from-left-2 duration-300">
+            <h1 className="text-white text-base font-bold leading-none">Gestão Sindical</h1>
+            <p className="text-slate-400 text-[10px] font-bold mt-1 uppercase tracking-tighter">Sistema Unificado</p>
+          </div>
+        )}
       </div>
 
-      <div 
+      <div
         ref={scrollContainerRef}
         onScroll={handleScroll}
         className="flex-1 overflow-y-auto no-scrollbar scroll-smooth"
@@ -139,55 +149,63 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
         {(!role && profileLoading) ? (
           <SidebarSkeleton />
         ) : (
-          <div className="px-4 py-6">
+          <div className={cn("px-4 py-6", isCollapsed && "px-2")}>
             {role === 'administrador' && (
-              <NavSection title="Administração" items={adminItems} />
+              <NavSection title={isCollapsed ? "" : "Administração"} items={adminItems} />
             )}
 
             {(role === 'administrador' || role === 'empresa') && (
-              <NavSection title="Portal Empresa" items={companyItems} />
+              <NavSection title={isCollapsed ? "" : "Portal Empresa"} items={companyItems} />
             )}
 
             {(role === 'administrador' || role === 'funcionario') && (
-              <NavSection title="Portal do Funcionário" items={employeeItems} colorClass="text-blue-400" />
+              <NavSection title={isCollapsed ? "" : "Portal do Funcionário"} items={employeeItems} colorClass="text-blue-400" />
             )}
 
             <div className="mt-4">
-              <NavSection title="Sistema" items={[{ label: "Suporte", icon: "help", path: "/suporte" }]} />
+              <NavSection title={isCollapsed ? "" : "Sistema"} items={[{ label: "Suporte", icon: "help", path: "/suporte" }]} />
             </div>
           </div>
         )}
       </div>
 
-      <div className="p-4 border-t border-slate-800 bg-slate-950/50 shrink-0 space-y-2">
-        <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-800 transition-colors">
-          <div className="size-9 rounded-full bg-slate-700 flex items-center justify-center border border-slate-600 overflow-hidden">
+      <div className={cn("p-4 border-t border-slate-800 bg-slate-950/50 shrink-0 space-y-2", isCollapsed && "p-2")}>
+        <div className={cn(
+          "flex items-center gap-3 p-2 rounded-lg hover:bg-slate-800 transition-colors overflow-hidden",
+          isCollapsed && "justify-center px-0"
+        )}>
+          <div className="size-9 rounded-full bg-slate-700 flex items-center justify-center border border-slate-600 overflow-hidden shrink-0">
             {profile?.avatar_url || user?.user_metadata?.avatar_url ? (
               <img src={profile?.avatar_url || user?.user_metadata?.avatar_url} alt="User" className="w-full h-full object-cover" />
             ) : (
               <UserIcon size={18} className="text-slate-400" />
             )}
           </div>
-          <div className="flex flex-col overflow-hidden flex-1">
-            <p className="text-sm font-bold text-white truncate">
-              {profile?.first_name 
-                ? `${profile.first_name} ${profile.last_name || ''}`
-                : user?.user_metadata?.first_name
-                  ? `${user.user_metadata.first_name} ${user.user_metadata.last_name || ''}`
-                  : user?.email?.split('@')[0] || "Usuário"}
-            </p>
-            <p className="text-[10px] font-bold text-slate-500 truncate uppercase">
-              {!role && profileLoading ? <Skeleton className="h-2 w-16 bg-slate-800 mt-1" /> : (role === 'administrador' ? 'Administrador' : role === 'empresa' ? 'Gestor de Empresa' : 'Funcionário')}
-            </p>
-          </div>
+          {!isCollapsed && (
+            <div className="flex flex-col overflow-hidden flex-1 animate-in fade-in slide-in-from-left-2 duration-300">
+              <p className="text-sm font-bold text-white truncate">
+                {profile?.first_name
+                  ? `${profile.first_name} ${profile.last_name || ''}`
+                  : user?.user_metadata?.first_name
+                    ? `${user.user_metadata.first_name} ${user.user_metadata.last_name || ''}`
+                    : user?.email?.split('@')[0] || "Usuário"}
+              </p>
+              <p className="text-[10px] font-bold text-slate-500 truncate uppercase">
+                {!role && profileLoading ? <Skeleton className="h-2 w-16 bg-slate-800 mt-1" /> : (role === 'administrador' ? 'Administrador' : role === 'empresa' ? 'Gestor de Empresa' : 'Funcionário')}
+              </p>
+            </div>
+          )}
         </div>
         
         <button
           onClick={handleSignOut}
-          className="w-full flex items-center gap-3 px-3 h-10 rounded-lg text-red-400 hover:bg-red-500/10 transition-colors group"
+          className={cn(
+            "w-full flex items-center gap-3 px-3 h-10 rounded-lg text-red-400 hover:bg-red-500/10 transition-colors group overflow-hidden",
+            isCollapsed && "justify-center px-0"
+          )}
         >
-          <LogOut size={18} />
-          <span className="text-sm font-bold">Sair do Sistema</span>
+          <LogOut size={18} className="shrink-0" />
+          {!isCollapsed && <span className="text-sm font-bold animate-in fade-in slide-in-from-left-2 duration-300">Sair do Sistema</span>}
         </button>
       </div>
     </aside>

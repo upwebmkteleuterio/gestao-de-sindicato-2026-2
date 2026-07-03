@@ -28,6 +28,23 @@ import ResetPassword from "./pages/auth/ResetPassword";
 import LegalScheduling from "./pages/employee/LegalScheduling";
 import Jurisdictions from "./pages/employee/Jurisdictions";
 import NotFound from "./pages/NotFound";
+import { useEffect } from "react";
+
+const ScrollToTop = () => {
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    // Procuramos o elemento principal de scroll definido no DashboardLayout
+    const mainContent = document.querySelector('main');
+    if (mainContent) {
+      mainContent.scrollTo(0, 0);
+    } else {
+      window.scrollTo(0, 0);
+    }
+  }, [pathname]);
+
+  return null;
+};
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -112,6 +129,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
+          <ScrollToTop />
           <Routes>
             <Route path="/" element={<RootRedirect />} />
             <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />

@@ -49,8 +49,13 @@ const CompanyDetailsView: React.FC<CompanyDetailsViewProps> = ({
             </div>
 
             <div className="space-y-1">
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">E-mail Financeiro</p>
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">E-mail de Cadastro</p>
               <p className="text-sm font-medium text-blue-600 truncate">{company.email}</p>
+            </div>
+
+            <div className="space-y-1">
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">E-mail da Contabilidade</p>
+              <p className="text-sm font-medium text-blue-600 truncate">{company.accountingEmail || company.accounting_email || "---"}</p>
             </div>
 
             <div className="space-y-1">

@@ -10,8 +10,12 @@ import CompaniesTableSkeleton from "@/components/admin/companies/CompaniesTableS
 import EmptyState from "@/components/shared/EmptyState";
 import { useCompaniesManager } from "@/hooks/useCompaniesManager";
 import { SearchX, Building2 } from "lucide-react";
+import { useEffect, useRef } from "react";
 
 const Companies = () => {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const lastSelectedId = useRef<string | null>(null);
+
   const {
     searchTerm, setSearchTerm,
     statusFilter, setStatusFilter,
@@ -30,11 +34,32 @@ const Companies = () => {
     handleCloseModal
   } = useCompaniesManager();
 
+  // Armazena o ID da última empresa selecionada para destacar e voltar scroll
+  useEffect(() => {
+    if (selectedCompany) {
+      lastSelectedId.current = selectedCompany.id;
+    }
+  }, [selectedCompany]);
+
+  // Restaura o scroll quando volta para a lista
+  useEffect(() => {
+    if (!selectedCompany && lastSelectedId.current && scrollRef.current) {
+      // Pequeno delay para garantir que a lista foi renderizada
+      const timer = setTimeout(() => {
+        const row = document.querySelector(`[data-id="${lastSelectedId.current}"]`);
+        if (row) {
+          row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [selectedCompany]);
+
   return (
     <div className="flex flex-col h-full animate-in fade-in duration-500 relative bg-[#f8f9fc]">
-      <CompaniesHeader 
-        selectedCompany={selectedCompany} 
-        onBack={() => setSelectedCompany(null)} 
+      <CompaniesHeader
+        selectedCompany={selectedCompany}
+        onBack={() => setSelectedCompany(null)}
         searchTerm={searchTerm}
         onSearchChange={setSearchTerm}
         onOpenNewCompany={() => setIsNewModalOpen(true)}
@@ -47,13 +72,13 @@ const Companies = () => {
         onSortOrderChange={setSortOrder}
       />
 
-      <main className="flex-1 overflow-auto p-6">
+      <main ref={scrollRef} className="flex-1 overflow-auto p-6">
         <div className="max-w-7xl mx-auto">
           {isLoading && !selectedCompany ? (
             <CompaniesTableSkeleton />
           ) : !selectedCompany ? (
             storedCompanies.length === 0 ? (
-              <EmptyState 
+              <EmptyState
                 icon={Building2}
                 title="Nenhuma empresa cadastrada"
                 description="Comece registrando a primeira empresa do seu sindicato para gerenciar as arrecadações."
@@ -63,12 +88,13 @@ const Companies = () => {
                 }}
               />
             ) : filteredCompanies.length > 0 ? (
-              <CompaniesListTable 
-                companies={filteredCompanies} 
-                onSelectCompany={setSelectedCompany} 
+              <CompaniesListTable
+                companies={filteredCompanies}
+                onSelectCompany={setSelectedCompany}
+                highlightId={lastSelectedId.current}
               />
             ) : (
-              <EmptyState 
+              <EmptyState
                 icon={SearchX}
                 title="Nenhum resultado"
                 description="Não encontramos nenhuma empresa que corresponda aos filtros aplicados."
@@ -83,9 +109,9 @@ const Companies = () => {
               />
             )
           ) : (
-            <CompanyDetailsView 
-              company={selectedCompany} 
-              employees={currentCompanyEmployees} 
+            <CompanyDetailsView
+              company={selectedCompany}
+              employees={currentCompanyEmployees}
               onSelectEmployee={setSelectedEmployee}
               onEditCompany={handleEditCompany}
             />
@@ -93,13 +119,13 @@ const Companies = () => {
         </div>
       </main>
 
-      <EmployeeDetailsDrawer 
-        employee={selectedEmployee} 
-        onClose={() => setSelectedEmployee(null)} 
+      <EmployeeDetailsDrawer
+        employee={selectedEmployee}
+        onClose={() => setSelectedEmployee(null)}
       />
 
-      <NewCompanyModal 
-        isOpen={isNewModalOpen} 
+      <NewCompanyModal
+        isOpen={isNewModalOpen}
         onClose={handleCloseModal}
         companyToEdit={companyToEdit}
       />
