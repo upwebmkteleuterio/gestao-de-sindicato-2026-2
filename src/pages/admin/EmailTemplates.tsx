@@ -136,31 +136,33 @@ const SystemConfigForm = () => {
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="senderPrefix">E-mail de Disparo (Prefixo)</Label>
-            <div className="flex items-center space-x-2">
-              <Input
-                id="senderPrefix"
-                value={prefix}
-                onChange={(e) => setPrefix(e.target.value)}
-                required
-                className="flex-grow"
-              />
-              <span className="text-sm text-gray-500">@secbm.org.br</span>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="senderPrefix">E-mail de Disparo (Prefixo)</Label>
+              <div className="flex items-center space-x-2">
+                <Input
+                  id="senderPrefix"
+                  value={prefix}
+                  onChange={(e) => setPrefix(e.target.value)}
+                  required
+                  className="flex-grow"
+                />
+                <span className="text-sm text-gray-500">@secbm.org.br</span>
+              </div>
+              <p className="text-xs text-gray-500">Apenas o valor antes do "@" pode ser alterado.</p>
             </div>
-            <p className="text-xs text-gray-500">Apenas o valor antes do "@" pode ser alterado.</p>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="systemUrl">URL do Sistema</Label>
-            <Input
-              id="systemUrl"
-              type="url"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              required
-              placeholder="https://seu-sistema.com.br"
-            />
-            <p className="text-xs text-gray-500">URL base usada no botão de retorno ao sistema nos e-mails.</p>
+            <div className="space-y-2">
+              <Label htmlFor="systemUrl">URL do Sistema</Label>
+              <Input
+                id="systemUrl"
+                type="url"
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                required
+                placeholder="https://seu-sistema.com.br"
+              />
+              <p className="text-xs text-gray-500">URL base usada no botão de retorno ao sistema nos e-mails.</p>
+            </div>
           </div>
           <Button type="submit" disabled={updateSettings.isPending}>
             {updateSettings.isPending ? "Salvando..." : "Salvar Configurações"}

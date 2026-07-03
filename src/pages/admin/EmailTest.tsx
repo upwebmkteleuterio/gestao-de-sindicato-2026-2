@@ -22,6 +22,8 @@ export default function EmailTest() {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       
+      const sender_email_prefix = from.split('@')[0]; // Extrai o prefixo do email completo
+      
       const response = await fetch(`https://syzhrxnnoncaftojlflv.supabase.co/functions/v1/send-email`, {
         method: 'POST',
         headers: {
@@ -29,10 +31,10 @@ export default function EmailTest() {
           'Authorization': `Bearer ${session?.access_token || ''}`,
         },
         body: JSON.stringify({
-          to,
-          from,
+          to: [to], // Envia como array, conforme esperado pela Edge Function
           subject,
           html,
+          sender_email_prefix,
         }),
       });
 
