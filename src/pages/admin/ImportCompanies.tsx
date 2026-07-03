@@ -142,7 +142,7 @@ const ImportCompanies = () => {
     return rawData.map(row => {
       const company: any = {};
       Object.entries(mapping).forEach(([field, index]) => {
-        if (index !== "") {
+        if (index !== "" && index !== "none") {
           company[field] = row[parseInt(index)];
         }
       });
@@ -287,7 +287,7 @@ const ImportCompanies = () => {
                       <SelectValue placeholder="Selecione a coluna..." />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">-- Não importar --</SelectItem>
+                      <SelectItem value="none">-- Não importar --</SelectItem>
                       {headers.map((h, i) => (
                         <SelectItem key={i} value={i.toString()}>{h || `Coluna ${i + 1}`}</SelectItem>
                       ))}
