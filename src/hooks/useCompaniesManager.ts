@@ -24,7 +24,7 @@ export const useCompaniesManager = () => {
   const [employeeFilter, setEmployeeFilter] = useState("all");
   const [sortOrder, setSortOrder] = useState("asc");
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 50; // Usando 50 para melhor performance inicial, mas expansível
+  const itemsPerPage = 50; 
 
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
   const [selectedEmployee, setSelectedEmployee] = useState<any | null>(null);
@@ -34,11 +34,9 @@ export const useCompaniesManager = () => {
   const { data, isLoading: isLoadingCompanies } = useQuery({
     queryKey: ["admin-companies", searchTerm, statusFilter, sortOrder, employeeFilter, currentPage],
     queryFn: async () => {
-      // 1. Busca configurações para saber a carência
       const { data: settings } = await supabase.from('financial_settings').select('grace_period_days').order('updated_at', { ascending: false }).limit(1).single();
       const graceDays = settings?.grace_period_days || 0;
 
-      // 2. Busca dados brutos com filtro no servidor e contagem total
       let query = supabase.from("companies").select("*", { count: 'exact' });
       
       if (searchTerm) {
@@ -57,10 +55,8 @@ export const useCompaniesManager = () => {
         }
       }
 
-      // Ordenação no servidor
       query = query.order("name", { ascending: sortOrder === "asc" });
 
-      // Paginação no servidor
       const from = (currentPage - 1) * itemsPerPage;
       const to = from + itemsPerPage - 1;
       query = query.range(from, to);
@@ -72,7 +68,6 @@ export const useCompaniesManager = () => {
 
       const companyIds = companiesData.map(c => c.id);
       
-      // Busca contagens e faturas em paralelo para otimizar
       const [countsRes, invoicesRes] = await Promise.all([
         supabase.from("employees").select("company_id").in("company_id", companyIds),
         supabase.from("invoices").select("*").in("company_id", companyIds)
@@ -154,7 +149,6 @@ export const useCompaniesManager = () => {
   });
 
   const filteredCompanies = useMemo(() => {
-    // Filtro de funcionários ainda em memória sobre a página atual
     let result = [...storedCompanies];
     
     if (employeeFilter !== "all") {
@@ -173,7 +167,6 @@ export const useCompaniesManager = () => {
 
   const totalPages = Math.ceil(totalItems / itemsPerPage);
 
-  // Reset page when filters change
   const handleSetSearchTerm = (val: string) => { setSearchTerm(val); setCurrentPage(1); };
   const handleSetStatusFilter = (val: string) => { setStatusFilter(val); setCurrentPage(1); };
   const handleSetEmployeeFilter = (val: string) => { setEmployeeFilter(val); setCurrentPage(1); };
@@ -209,7 +202,7 @@ export const useCompaniesManager = () => {
       queryClient.invalidateQueries({ queryKey: ["admin-companies"] });
       toast.success(`Status da empresa ${data.name} atualizado para ${data.status}.`);
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast.error(`Erro ao atualizar status: ${error.message}`);
     }
   });
@@ -227,68 +220,6 @@ export const useCompaniesManager = () => {
     totalPages,
     totalItems,
     itemsPerPage,
-    selectedCompany,
-    setSelectedCompany: (c: any) => setSelectedCompanyId(c?.id || null),
-    selectedEmployee, setSelectedEmployee,
-    isNewModalOpen, setIsNewModalOpen,
-    companyToEdit,
-    storedCompanies,
-    filteredCompanies,
-    currentCompanyEmployees,
-    isLoading: isLoadingCompanies,
-    handleDeleteCompany: (id: string) => deleteMutation.mutate(id),
-    saveCompany: (data: any) => saveCompanyMutation.mutate(data),
-    isSavingCompany: saveCompanyMutation.isPending,
-    handleEditCompany: (company: any) => { setCompanyToEdit(company); setIsNewModalOpen(true); },
-    handleCloseModal: () => { setIsNewModalOpen(false); setCompanyToEdit(null); },
-    handleUpdateApprovalStatus,
-  };
-};
-
-  const saveCompanyMutation = useMutation({
-    mutationFn: async (companyData: any) => {
-      const { data, error } = await supabase.from("companies").upsert(companyData).select().single();
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-companies"] })
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("companies").delete().eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-companies"] });
-      setSelectedCompanyId(null);
-    }
-  });
-
-  const updateApprovalStatusMutation = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      const { data, error } = await supabase.from("companies").update({ status }).eq("id", id).select().single();
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["admin-companies"] });
-      toast.success(`Status da empresa ${data.name} atualizado para ${data.status}.`);
-    },
-    onError: (error) => {
-      toast.error(`Erro ao atualizar status: ${error.message}`);
-    }
-  });
-
-  const handleUpdateApprovalStatus = (companyId: string, newStatus: string) => {
-    updateApprovalStatusMutation.mutate({ id: companyId, status: newStatus });
-  };
-
-  return {
-    searchTerm, setSearchTerm,
-    statusFilter, setStatusFilter,
-    employeeFilter, setEmployeeFilter,
-    sortOrder, setSortOrder,
     selectedCompany,
     setSelectedCompany: (c: any) => setSelectedCompanyId(c?.id || null),
     selectedEmployee, setSelectedEmployee,
