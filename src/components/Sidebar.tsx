@@ -51,6 +51,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
     { label: "Dashboard", icon: "grid_view", path: "/admin", fill: true },
     { label: "Aprovações", icon: "check_circle", path: "/admin/aprovacoes" },
     { label: "Empresas", icon: "domain", path: "/admin/empresas" },
+    { label: "Importar", icon: "file_upload", path: "/admin/importar" },
     // { label: "Financeiro", icon: "payments", path: "/admin/financeiro" }, // Ocultado temporariamente
     { label: "Agenda", icon: "calendar_month", path: "/admin/agenda" },
     { label: "Jurídico", icon: "gavel", path: "/admin/juridico" },

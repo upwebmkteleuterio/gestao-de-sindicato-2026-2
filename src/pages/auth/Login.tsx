@@ -21,8 +21,16 @@ const Login = () => {
     
     setIsLoading(true);
     try {
+      let loginEmail = formData.email;
+      
+      // Se parece um CNPJ (apenas números ou formatado), transforma no e-mail virtual
+      const cleanInput = formData.email.replace(/\D/g, '');
+      if (cleanInput.length === 14) {
+        loginEmail = `${cleanInput}@gestaosindicato.com.br`;
+      }
+
       const { data, error } = await supabase.auth.signInWithPassword({
-        email: formData.email,
+        email: loginEmail,
         password: formData.password,
       });
 
@@ -60,14 +68,14 @@ const Login = () => {
 
         <form onSubmit={handleSubmit} className="p-8 space-y-6">
           <div className="space-y-2">
-            <Label className="text-slate-700 font-bold">E-mail de acesso</Label>
-            <Input 
-              type="email" 
-              placeholder="exemplo@email.com"
+            <Label className="text-slate-700 font-bold">CNPJ ou E-mail de acesso</Label>
+            <Input
+              type="text"
+              placeholder="00.000.000/0001-00 ou email@exemplo.com"
               className="h-12 rounded-xl border-slate-200 focus:ring-blue-600/20 focus:border-blue-600"
-              value={formData.email} 
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })} 
-              required 
+              value={formData.email}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              required
             />
           </div>
           <div className="space-y-2">

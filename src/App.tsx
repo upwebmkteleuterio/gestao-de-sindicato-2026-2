@@ -9,6 +9,7 @@ import DashboardLayout from "./components/layout/DashboardLayout";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import Approvals from "./pages/admin/Approvals";
 import Companies from "./pages/admin/Companies";
+import ImportCompanies from "./pages/admin/ImportCompanies";
 import Agenda from "./pages/admin/Agenda";
 import FinancialLegal from "./pages/admin/FinancialLegal";
 import Juridico from "./pages/admin/Juridico";
@@ -123,6 +124,7 @@ const App = () => (
                 <Route index element={<AdminDashboard />} />
                 <Route path="aprovacoes" element={<Approvals />} />
                 <Route path="empresas" element={<Companies />} />
+                <Route path="importar" element={<ImportCompanies />} />
                 <Route path="financeiro" element={<FinancialLegal />} />
                 <Route path="agenda" element={<Agenda />} />
                 <Route path="juridico" element={<Juridico />} />
