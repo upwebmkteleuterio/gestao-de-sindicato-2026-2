@@ -57,30 +57,6 @@ export const useFinancials = (explicitCompanyId?: string) => {
     enabled: !!targetCompanyId
   });
 
-  const createManualInvoice = useMutation({
-    mutationFn: async (invoiceData: any) => {
-      const { data, error } = await supabase
-        .from('invoices')
-        .insert([{
-          ...invoiceData,
-          company_id: targetCompanyId,
-          status: 'Pendente',
-          billing_type: 'Ajuste de Saldo',
-          invoice_number: `MIG-${Math.floor(1000 + Math.random() * 9000)}`
-        }])
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['invoices', targetCompanyId] });
-      queryClient.invalidateQueries({ queryKey: ['admin-companies'] });
-      toast.success("Dívida retroativa lançada!");
-    }
-  });
-
   const updateInvoiceStatus = useMutation({
     mutationFn: async ({ id, status, payment_origin }: { id: string, status: string, payment_origin?: string }) => {
       const payload: any = { status };
@@ -117,7 +93,6 @@ export const useFinancials = (explicitCompanyId?: string) => {
     selectedYear,
     setSelectedYear,
     stats,
-    createManualInvoice,
     updateInvoiceStatus
   };
 };

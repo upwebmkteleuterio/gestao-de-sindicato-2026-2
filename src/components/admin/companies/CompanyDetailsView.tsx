@@ -3,10 +3,12 @@
 import React, { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Edit2, Phone, MessageSquare, History, Receipt, Users as UsersIcon } from "lucide-react";
+import { Edit2, Phone, MessageSquare, History, Receipt, Users as UsersIcon, DollarSign } from "lucide-react";
 import ManualDebtModal from "./ManualDebtModal";
+import CollectInvoicesModal from "./CollectInvoicesModal";
 import AdminInvoicesTable from "./AdminInvoicesTable";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface CompanyDetailsViewProps {
   company: any;
@@ -15,13 +17,14 @@ interface CompanyDetailsViewProps {
   onEditCompany: (company: any) => void;
 }
 
-const CompanyDetailsView: React.FC<CompanyDetailsViewProps> = ({ 
-  company, 
-  employees, 
+const CompanyDetailsView: React.FC<CompanyDetailsViewProps> = ({
+  company,
+  employees,
   onSelectEmployee,
   onEditCompany
 }) => {
   const [isManualDebtOpen, setIsManualDebtOpen] = useState(false);
+  const [isCollectModalOpen, setIsCollectModalOpen] = useState(false);
 
   return (
     <div className="flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
@@ -123,12 +126,31 @@ const CompanyDetailsView: React.FC<CompanyDetailsViewProps> = ({
             <p className="text-[10px] text-slate-400 font-bold uppercase mt-1">Dívida Total Consolidada</p>
           </div>
           <div className="flex flex-col gap-3">
-            <Button 
+            <Button
               className="w-full h-11 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 shadow-lg shadow-blue-900/50"
             >
               Gerar Boleto de Acordo
             </Button>
-            <Button 
+            
+            {/* ADD COBRAR BUTTON WITH TOOLTIP */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="destructive"
+                  onClick={() => setIsCollectModalOpen(true)}
+                  className="w-full h-11 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 shadow-lg shadow-red-900/50 gap-2 transition-all"
+                >
+                  <DollarSign size={16} />
+                  Cobrar
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Envia um e-mail listando todas as faturas pendentes para a empresa.</p>
+              </TooltipContent>
+            </Tooltip>
+            {/* END COBRAR BUTTON */}
+
+            <Button
               variant="outline"
               onClick={() => setIsManualDebtOpen(true)}
               className="w-full h-11 bg-transparent border-slate-700 text-slate-300 font-bold hover:bg-slate-800 hover:text-white gap-2 transition-all"
@@ -213,12 +235,27 @@ const CompanyDetailsView: React.FC<CompanyDetailsViewProps> = ({
         </TabsContent>
       </Tabs>
 
-      <ManualDebtModal 
+      <ManualDebtModal
         isOpen={isManualDebtOpen}
         onClose={() => setIsManualDebtOpen(false)}
         companyId={company.id}
         companyName={company.name}
+        companyEmail={company.email}
+        accountingEmail={company.accounting_email || company.accountingEmail}
+        companyCnpj={company.cnpj}
       />
+      
+      {/* ADD COLLECT INVOICES MODAL */}
+      <CollectInvoicesModal
+        isOpen={isCollectModalOpen}
+        onClose={() => setIsCollectModalOpen(false)}
+        companyId={company.id}
+        companyName={company.name}
+        companyEmail={company.email}
+        accountingEmail={company.accounting_email || company.accountingEmail}
+        companyCnpj={company.cnpj}
+      />
+      {/* END COLLECT INVOICES MODAL */}
     </div>
   );
 };
