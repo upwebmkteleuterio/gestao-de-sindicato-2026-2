@@ -37,6 +37,12 @@ const Companies = () => {
   useEffect(() => {
     if (selectedCompany) {
       lastSelectedId.current = selectedCompany.id;
+      // Forçamos o scroll para o topo de múltiplas formas para garantir
+      const scrollContainer = document.getElementById('scroll-container');
+      if (scrollContainer) {
+        scrollContainer.scrollTop = 0;
+      }
+      window.scrollTo(0, 0);
     }
   }, [selectedCompany]);
 

@@ -79,13 +79,9 @@ const CompaniesHeader: React.FC<CompaniesHeaderProps> = ({
           <div className="flex items-center gap-2">
             {!selectedCompany ? (
               <>
-                <button className="flex items-center gap-2 h-10 px-4 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-500/20">
-                  <span className="material-symbols-outlined text-lg">upload_file</span>
-                  Importar
-                </button>
-                <button 
+                <button
                   onClick={onOpenNewCompany}
-                  className="flex items-center gap-2 h-10 px-4 bg-white border border-slate-200 text-slate-700 rounded-xl text-sm font-bold hover:bg-slate-50 transition-all"
+                  className="flex items-center gap-2 h-10 px-4 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-500/20"
                 >
                   <span className="material-symbols-outlined text-lg">add</span>
                   Nova Empresa

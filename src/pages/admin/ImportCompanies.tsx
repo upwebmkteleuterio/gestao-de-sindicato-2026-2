@@ -10,9 +10,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { Upload, ClipboardPaste, X, Check, Loader2, AlertCircle, Info, FileSpreadsheet } from "lucide-react";
+import { Upload, ClipboardPaste, X, Check, Loader2, AlertCircle, Info, FileSpreadsheet, Pause, Play, Ban } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { cn } from "@/lib/utils";
 import * as XLSX from "xlsx";
 
 interface ColumnMapping {
@@ -57,9 +58,13 @@ const ImportCompanies = () => {
   const [mapping, setMapping] = useState<ColumnMapping>(DEFAULT_MAPPING);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
   const [importProgress, setImportProgress] = useState(0);
   const [importLogs, setImportLogs] = useState<{ cnpj: string; status: 'success' | 'error'; message?: string }[]>([]);
   const [pastedText, setPastedText] = useState("");
+  
+  const isPausedRef = useRef(false);
+  const shouldCancelRef = useRef(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handlePaste = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -72,7 +77,6 @@ const ImportCompanies = () => {
       setHeaders(rows[0]);
       setRawData(rows.slice(1).filter(row => row.some(cell => cell !== "")));
       
-      // Auto-mapping attempt
       const newMapping = { ...DEFAULT_MAPPING };
       rows[0].forEach((header, index) => {
         const h = header.toLowerCase();
@@ -95,7 +99,6 @@ const ImportCompanies = () => {
     if (!file) return;
 
     const fileName = file.name.toLowerCase();
-    
     if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
       const reader = new FileReader();
       reader.onload = (event) => {
@@ -103,16 +106,11 @@ const ImportCompanies = () => {
         const workbook = XLSX.read(data, { type: 'array' });
         const firstSheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[firstSheetName];
-        
-        // Convert to array of arrays (strings)
         const jsonData = XLSX.utils.sheet_to_json<string[]>(worksheet, { header: 1, defval: "" });
-        
         if (jsonData.length > 0) {
           const rows = jsonData.map(row => row.map(cell => String(cell).trim()));
           setHeaders(rows[0]);
           setRawData(rows.slice(1).filter(row => row.some(cell => cell !== "")));
-          
-          // Generate a TSV-like preview for the textarea
           const previewText = rows.map(row => row.join("\t")).join("\n");
           setPastedText(previewText);
           toast.success("Arquivo Excel carregado com sucesso!");
@@ -123,10 +121,8 @@ const ImportCompanies = () => {
       const reader = new FileReader();
       reader.onload = (event) => {
         const content = event.target?.result as string;
-        // Basic CSV/TSV detection
         const delimiter = content.includes("\t") ? "\t" : (content.includes(";") ? ";" : ",");
         const rows = content.split("\n").map(row => row.split(delimiter).map(cell => cell.trim().replace(/^"|"$/g, '')));
-        
         if (rows.length > 0) {
           setHeaders(rows[0]);
           setRawData(rows.slice(1).filter(row => row.some(cell => cell !== "")));
@@ -158,12 +154,14 @@ const ImportCompanies = () => {
     }
 
     setIsImporting(true);
+    setIsPaused(false);
+    isPausedRef.current = false;
+    shouldCancelRef.current = false;
     setImportProgress(0);
     setImportLogs([]);
     setIsPreviewOpen(false);
 
-    // Split into chunks of 50 to avoid timeouts and keep logs readable
-    const chunkSize = 50;
+    const chunkSize = 20;
     const chunks = [];
     for (let i = 0; i < dataToImport.length; i += chunkSize) {
       chunks.push(dataToImport.slice(i, i + chunkSize));
@@ -173,6 +171,18 @@ const ImportCompanies = () => {
     let totalError = 0;
 
     for (let i = 0; i < chunks.length; i++) {
+      if (shouldCancelRef.current) {
+        break;
+      }
+
+      while (isPausedRef.current && !shouldCancelRef.current) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+
+      if (shouldCancelRef.current) {
+        break;
+      }
+
       const chunk = chunks[i];
       try {
         const { data, error } = await supabase.functions.invoke('batch-import-companies', {
@@ -189,21 +199,41 @@ const ImportCompanies = () => {
 
         setImportLogs(prev => [...prev, ...results]);
         setImportProgress(Math.round(((i + 1) / chunks.length) * 100));
-        
-        // Small delay to respect rate limits even further and allow UI to breathe
         await new Promise(resolve => setTimeout(resolve, 500));
       } catch (err: any) {
         console.error("Erro no chunk:", err);
-        setImportLogs(prev => [...prev, ...chunk.map(c => ({ 
-          cnpj: c.cnpj, 
-          status: 'error', 
-          message: err.message || "Erro desconhecido na função" 
+        setImportLogs(prev => [...prev, ...chunk.map(c => ({
+          cnpj: c.cnpj,
+          status: 'error',
+          message: err.message || "Erro desconhecido na função"
         }))]);
       }
     }
 
     setIsImporting(false);
-    toast.success(`Importação finalizada: ${totalSuccess} sucessos, ${totalError} erros.`);
+    setIsPaused(false);
+    
+    if (shouldCancelRef.current) {
+      toast.warning(`Importação interrompida. Processados: ${totalSuccess + totalError} de ${dataToImport.length}.`);
+    } else {
+      toast.success(`Importação finalizada: ${totalSuccess} sucessos, ${totalError} erros.`);
+    }
+  };
+
+  const togglePause = () => {
+    const nextState = !isPaused;
+    setIsPaused(nextState);
+    isPausedRef.current = nextState;
+    toast.info(nextState ? "Importação pausada." : "Importação retomada.");
+  };
+
+  const cancelImport = () => {
+    shouldCancelRef.current = true;
+    if (isPaused) {
+      setIsPaused(false);
+      isPausedRef.current = false;
+    }
+    toast.info("Cancelando processo...");
   };
 
   return (
@@ -228,7 +258,6 @@ const ImportCompanies = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Step 1: Input Data */}
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -259,7 +288,6 @@ const ImportCompanies = () => {
           </CardContent>
         </Card>
 
-        {/* Step 2: Mapping */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -319,15 +347,39 @@ const ImportCompanies = () => {
         </Card>
       </div>
 
-      {/* Progress & Logs Section */}
       {(isImporting || importLogs.length > 0) && (
         <Card className="border-blue-200 bg-blue-50/30">
           <CardHeader className="pb-2">
             <div className="flex justify-between items-center">
-              <CardTitle className="text-lg">Progresso da Importação</CardTitle>
-              <Badge variant={isImporting ? "outline" : "default"} className={isImporting ? "animate-pulse" : "bg-green-600"}>
-                {isImporting ? "Importando..." : "Concluído"}
-              </Badge>
+              <div className="flex items-center gap-3">
+                <CardTitle className="text-lg">Progresso da Importação</CardTitle>
+                <Badge variant={isImporting ? (isPaused ? "secondary" : "outline") : "default"} className={isImporting && !isPaused ? "animate-pulse" : (isPaused ? "bg-amber-100 text-amber-700 border-amber-200" : "bg-green-600")}>
+                  {isImporting ? (isPaused ? "Pausado" : "Importando...") : "Concluído"}
+                </Badge>
+              </div>
+              
+              {isImporting && (
+                <div className="flex items-center gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={togglePause}
+                    className="h-8 gap-2 bg-white text-xs font-bold"
+                  >
+                    {isPaused ? <Play size={14} className="fill-current" /> : <Pause size={14} className="fill-current" />}
+                    {isPaused ? "Retomar" : "Pausar"}
+                  </Button>
+                  <Button 
+                    variant="destructive" 
+                    size="sm" 
+                    onClick={cancelImport}
+                    className="h-8 gap-2 text-xs font-bold"
+                  >
+                    <Ban size={14} />
+                    Cancelar
+                  </Button>
+                </div>
+              )}
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -336,7 +388,7 @@ const ImportCompanies = () => {
                 <span>Processando {importLogs.length} de {rawData.length}</span>
                 <span className="font-bold">{importProgress}%</span>
               </div>
-              <Progress value={importProgress} className="h-2 bg-slate-200" />
+              <Progress value={importProgress} className={cn("h-2 bg-slate-200", isPaused && "opacity-50")} />
             </div>
 
             <div className="bg-white rounded-xl border p-4">
@@ -364,7 +416,6 @@ const ImportCompanies = () => {
         </Card>
       )}
 
-      {/* Preview Modal */}
       <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
         <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
           <DialogHeader>
