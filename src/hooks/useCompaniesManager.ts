@@ -30,14 +30,14 @@ export const useCompaniesManager = () => {
   const [companyToEdit, setCompanyToEdit] = useState<any | null>(null);
 
   const { data: storedCompanies = [], isLoading: isLoadingCompanies } = useQuery({
-    queryKey: ["admin-companies", searchTerm, statusFilter, sortOrder],
+    queryKey: ["admin-companies", searchTerm, statusFilter, sortOrder, employeeFilter],
     queryFn: async () => {
       // 1. Busca configurações para saber a carência
       const { data: settings } = await supabase.from('financial_settings').select('grace_period_days').order('updated_at', { ascending: false }).limit(1).single();
       const graceDays = settings?.grace_period_days || 0;
 
       // 2. Busca dados brutos com filtro no servidor
-      let query = supabase.from("companies").select("*");
+      let query = supabase.from("companies").select("*", { count: 'exact' });
       
       if (searchTerm) {
         query = query.or(`name.ilike.%${searchTerm}%,cnpj.ilike.%${searchTerm}%`);
@@ -45,11 +45,11 @@ export const useCompaniesManager = () => {
       
       if (statusFilter !== "all") {
         if (statusFilter === "pending") {
-          query = query.in("status", ["pending", "Pendente"]);
+          query = query.or('status.eq.pending,status.eq.Pendente');
         } else if (statusFilter === "approved") {
-          query = query.in("status", ["approved", "Aprovado", "Aprovada"]);
+          query = query.or('status.eq.approved,status.eq.Aprovado,status.eq.Aprovada');
         } else if (statusFilter === "rejected") {
-          query = query.in("status", ["rejected", "Recusado", "Recusada"]);
+          query = query.or('status.eq.rejected,status.eq.Recusado,status.eq.Recusada');
         } else {
           query = query.eq("status", statusFilter);
         }
@@ -58,19 +58,30 @@ export const useCompaniesManager = () => {
       // Ordenação no servidor
       query = query.order("name", { ascending: sortOrder === "asc" });
 
+      // Como o volume de dados é alto (1.8k+), aplicamos um limite razoável por vez se não houver busca específica
+      if (!searchTerm && statusFilter === "all") {
+        query = query.limit(100);
+      }
+
       const { data: companiesData, error: compErr } = await query;
       if (compErr) throw compErr;
 
-      // Limitamos o processamento pesado apenas para os dados retornados (máx 1000 por padrão do Supabase)
-      const companyIds = (companiesData || []).map(c => c.id);
+      if (!companiesData || companiesData.length === 0) return [];
+
+      const companyIds = companiesData.map(c => c.id);
       
-      // Busca contagens e faturas apenas para as empresas da página atual/filtro
-      const { data: counts } = await supabase.from("employees").select("company_id").in("company_id", companyIds);
-      const { data: invoices } = await supabase.from("invoices").select("*").in("company_id", companyIds);
+      // Busca contagens e faturas em paralelo para otimizar
+      const [countsRes, invoicesRes] = await Promise.all([
+        supabase.from("employees").select("company_id").in("company_id", companyIds),
+        supabase.from("invoices").select("*").in("company_id", companyIds)
+      ]);
+
+      const counts = countsRes.data || [];
+      const invoices = invoicesRes.data || [];
       
-      return (companiesData || []).map(c => {
-        const count = counts?.filter(e => e.company_id === c.id).length || 0;
-        const companyInvoices = invoices?.filter(inv => inv.company_id === c.id) || [];
+      let processed = companiesData.map(c => {
+        const count = counts.filter(e => e.company_id === c.id).length || 0;
+        const companyInvoices = invoices.filter(inv => inv.company_id === c.id) || [];
         
         const totalDebt = companyInvoices
           .filter(inv => inv.status !== 'Pago')
@@ -113,6 +124,21 @@ export const useCompaniesManager = () => {
           lastUpdate: c.updated_at || new Date().toISOString()
         };
       });
+
+      // Filtro de funcionários (ainda feito em memória pois depende de contagem de outra tabela,
+      // mas agora operando sobre um set de dados reduzido e filtrado pelo servidor)
+      if (employeeFilter !== "all") {
+        processed = processed.filter(company => {
+          const count = company.employeesCount;
+          if (employeeFilter === "0-10") return count <= 10;
+          if (employeeFilter === "11-50") return count > 10 && count <= 50;
+          if (employeeFilter === "51-200") return count > 50 && count <= 200;
+          if (employeeFilter === "201+") return count > 200;
+          return true;
+        });
+      }
+
+      return processed;
     },
     enabled: !!user,
   });
@@ -133,23 +159,10 @@ export const useCompaniesManager = () => {
   });
 
   const filteredCompanies = useMemo(() => {
-    // A filtragem agora é feita no servidor, então retornamos os dados processados
-    // O employeeFilter ainda é feito em memória se necessário, ou podemos adicionar ao servidor também
-    let result = [...storedCompanies];
-    
-    if (employeeFilter !== "all") {
-      result = result.filter(company => {
-        const count = company.employeesCount;
-        if (employeeFilter === "0-10") return count <= 10;
-        if (employeeFilter === "11-50") return count > 10 && count <= 50;
-        if (employeeFilter === "51-200") return count > 50 && count <= 200;
-        if (employeeFilter === "201+") return count > 200;
-        return true;
-      });
-    }
-    
-    return result;
-  }, [storedCompanies, employeeFilter]);
+    // Agora o storedCompanies já vem filtrado do servidor para status, busca e ordem.
+    // O filtro de funcionários já foi aplicado dentro do queryFn.
+    return storedCompanies;
+  }, [storedCompanies]);
 
   const saveCompanyMutation = useMutation({
     mutationFn: async (companyData: any) => {
