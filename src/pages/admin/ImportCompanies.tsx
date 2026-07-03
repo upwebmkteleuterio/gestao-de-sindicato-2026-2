@@ -10,9 +10,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { Upload, ClipboardPaste, X, Check, Loader2, AlertCircle, Info } from "lucide-react";
+import { Upload, ClipboardPaste, X, Check, Loader2, AlertCircle, Info, FileSpreadsheet } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import * as XLSX from "xlsx";
 
 interface ColumnMapping {
   name: string;
@@ -93,20 +94,48 @@ const ImportCompanies = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const content = event.target?.result as string;
-      // Basic CSV/TSV detection
-      const delimiter = content.includes("\t") ? "\t" : ";";
-      const rows = content.split("\n").map(row => row.split(delimiter).map(cell => cell.trim().replace(/^"|"$/g, '')));
-      
-      if (rows.length > 0) {
-        setHeaders(rows[0]);
-        setRawData(rows.slice(1).filter(row => row.some(cell => cell !== "")));
-        setPastedText(content);
-      }
-    };
-    reader.readAsText(file);
+    const fileName = file.name.toLowerCase();
+    
+    if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const data = new Uint8Array(event.target?.result as ArrayBuffer);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const firstSheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheetName];
+        
+        // Convert to array of arrays (strings)
+        const jsonData = XLSX.utils.sheet_to_json<string[]>(worksheet, { header: 1, defval: "" });
+        
+        if (jsonData.length > 0) {
+          const rows = jsonData.map(row => row.map(cell => String(cell).trim()));
+          setHeaders(rows[0]);
+          setRawData(rows.slice(1).filter(row => row.some(cell => cell !== "")));
+          
+          // Generate a TSV-like preview for the textarea
+          const previewText = rows.map(row => row.join("\t")).join("\n");
+          setPastedText(previewText);
+          toast.success("Arquivo Excel carregado com sucesso!");
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    } else {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const content = event.target?.result as string;
+        // Basic CSV/TSV detection
+        const delimiter = content.includes("\t") ? "\t" : (content.includes(";") ? ";" : ",");
+        const rows = content.split("\n").map(row => row.split(delimiter).map(cell => cell.trim().replace(/^"|"$/g, '')));
+        
+        if (rows.length > 0) {
+          setHeaders(rows[0]);
+          setRawData(rows.slice(1).filter(row => row.some(cell => cell !== "")));
+          setPastedText(content);
+          toast.success("Arquivo de texto carregado com sucesso!");
+        }
+      };
+      reader.readAsText(file);
+    }
   };
 
   const getMappedData = () => {
@@ -190,10 +219,10 @@ const ImportCompanies = () => {
           </Button>
           <input 
             type="file" 
-            ref={fileInputRef} 
-            onChange={handleFileUpload} 
-            className="hidden" 
-            accept=".csv,.txt,.tsv"
+            ref={fileInputRef}
+            onChange={handleFileUpload}
+            className="hidden"
+            accept=".csv,.txt,.tsv,.xlsx,.xls"
           />
         </div>
       </div>
