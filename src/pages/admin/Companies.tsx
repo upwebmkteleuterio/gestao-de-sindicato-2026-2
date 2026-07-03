@@ -13,7 +13,6 @@ import { SearchX, Building2 } from "lucide-react";
 import { useEffect, useRef } from "react";
 
 const Companies = () => {
-  const scrollRef = useRef<HTMLDivElement>(null);
   const lastSelectedId = useRef<string | null>(null);
 
   const {
@@ -43,7 +42,7 @@ const Companies = () => {
 
   // Restaura o scroll quando volta para a lista
   useEffect(() => {
-    if (!selectedCompany && lastSelectedId.current && scrollRef.current) {
+    if (!selectedCompany && lastSelectedId.current) {
       // Pequeno delay para garantir que a lista foi renderizada
       const timer = setTimeout(() => {
         const row = document.querySelector(`[data-id="${lastSelectedId.current}"]`);
@@ -72,7 +71,7 @@ const Companies = () => {
         onSortOrderChange={setSortOrder}
       />
 
-      <main ref={scrollRef} className="flex-1 overflow-auto p-6">
+      <main className="flex-1 p-6">
         <div className="max-w-7xl mx-auto">
           {isLoading && !selectedCompany ? (
             <CompaniesTableSkeleton />

@@ -34,10 +34,10 @@ const ScrollToTop = () => {
   const { pathname } = useLocation();
 
   useEffect(() => {
-    // Procuramos o elemento principal de scroll definido no DashboardLayout
-    const mainContent = document.querySelector('main');
-    if (mainContent) {
-      mainContent.scrollTo(0, 0);
+    // Procuramos o container de scroll definido no DashboardLayout
+    const scrollContainer = document.getElementById('scroll-container');
+    if (scrollContainer) {
+      scrollContainer.scrollTo(0, 0);
     } else {
       window.scrollTo(0, 0);
     }

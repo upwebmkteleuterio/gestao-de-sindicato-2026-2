@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import Sidebar from "../Sidebar";
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -8,13 +10,29 @@ interface DashboardLayoutProps {
 
 const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   const [open, setOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const isMobile = useIsMobile();
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-[#f8f9fc]">
-      {/* Desktop Sidebar - Fixed Width and Height */}
-      <div className="hidden lg:block w-64 h-full shrink-0">
-        <Sidebar />
-      </div>
+      {/* Desktop Sidebar */}
+      {!isMobile && (
+        <div 
+          className={`hidden lg:block h-full shrink-0 transition-all duration-300 relative ${
+            isSidebarCollapsed ? 'w-20' : 'w-72'
+          }`}
+        >
+          <Sidebar isCollapsed={isSidebarCollapsed} />
+          
+          {/* Collapse Toggle Button */}
+          <button
+            onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+            className="absolute -right-3 top-24 z-50 bg-white border shadow-md rounded-full p-1 text-slate-400 hover:text-blue-600 transition-colors"
+          >
+            {isSidebarCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+          </button>
+        </div>
+      )}
 
       {/* Main Content Area */}
       <main className="flex-1 flex flex-col h-full min-w-0 overflow-hidden">
@@ -42,8 +60,10 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
         </div>
 
         {/* Page Content - Scrollable area */}
-        <div className="flex-1 overflow-y-auto no-scrollbar relative">
-          {children}
+        <div id="scroll-container" className="flex-1 overflow-y-auto no-scrollbar relative">
+          <div className="p-4 lg:p-8 min-h-full">
+            {children}
+          </div>
         </div>
       </main>
     </div>
