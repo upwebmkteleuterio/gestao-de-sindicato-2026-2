@@ -36,6 +36,22 @@ const Login = () => {
 
       if (error) throw error;
 
+      if (data.user) {
+        // Verificar se a empresa está excluída ANTES de permitir o acesso
+        const { data: company } = await supabase
+          .from("companies")
+          .select("status")
+          .eq("owner_id", data.user.id)
+          .maybeSingle();
+
+        if (company?.status === 'deleted') {
+          await supabase.auth.signOut();
+          toast.error("Esta conta foi excluída. Para mais informações, entre em contato com a administração do sindicato.");
+          setIsLoading(false);
+          return;
+        }
+      }
+
       toast.success("Login realizado!");
       navigate("/");
     } catch (error: any) {

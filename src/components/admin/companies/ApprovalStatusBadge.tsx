@@ -17,9 +17,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { ChevronDown, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { ChevronDown, CheckCircle, XCircle, Clock, Trash2, Info } from 'lucide-react';
 
-type Status = 'approved' | 'pending' | 'rejected' | 'suspended';
+type Status = 'approved' | 'pending' | 'onboarding' | 'rejected' | 'suspended' | 'deleted';
 
 interface ApprovalStatusBadgeProps {
   companyId: string;
@@ -29,9 +29,11 @@ interface ApprovalStatusBadgeProps {
 
 const statusMap: Record<Status, { label: string; color: string; icon: React.ElementType }> = {
   approved: { label: 'Aprovada', color: 'bg-green-100 text-green-800 border-green-300', icon: CheckCircle },
+  onboarding: { label: 'Onboarding', color: 'bg-blue-100 text-blue-800 border-blue-300', icon: Info },
   pending: { label: 'Pendente', color: 'bg-yellow-100 text-yellow-800 border-yellow-300', icon: Clock },
   rejected: { label: 'Recusada', color: 'bg-red-100 text-red-800 border-red-300', icon: XCircle },
   suspended: { label: 'Suspensa', color: 'bg-gray-100 text-gray-800 border-gray-300', icon: XCircle },
+  deleted: { label: 'Excluída', color: 'bg-slate-200 text-slate-600 border-slate-300', icon: Trash2 },
 };
 
 const ApprovalStatusBadge: React.FC<ApprovalStatusBadgeProps> = ({ companyId, currentStatus, onUpdate }) => {
@@ -88,17 +90,29 @@ const ApprovalStatusBadge: React.FC<ApprovalStatusBadgeProps> = ({ companyId, cu
       </DropdownMenu>
 
       <AlertDialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <AlertDialogContent>
+        <AlertDialogContent className="rounded-2xl">
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmar Mudança de Status</AlertDialogTitle>
             <AlertDialogDescription>
-              Você tem certeza que deseja alterar o status da empresa para **{newStatus ? statusMap[newStatus].label : ''}**?
-              Esta ação pode afetar o acesso da empresa ao sistema.
+              {newStatus === 'deleted' ? (
+                <div className="space-y-2">
+                  <p className="text-red-600 font-bold">Atenção: Você está excluindo esta empresa.</p>
+                  <p>A empresa não conseguirá mais ter acesso ao sistema caso a conta seja Excluída. Deseja continuar?</p>
+                </div>
+              ) : (
+                <p>
+                  Você tem certeza que deseja alterar o status da empresa para **{newStatus ? statusMap[newStatus].label : ''}**?
+                  Esta ação pode afetar o acesso da empresa ao sistema.
+                </p>
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirm}>
+            <AlertDialogCancel className="rounded-xl">Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirm}
+              className={cn("rounded-xl font-bold", newStatus === 'deleted' && "bg-red-600 hover:bg-red-700")}
+            >
               Confirmar
             </AlertDialogAction>
           </AlertDialogFooter>
