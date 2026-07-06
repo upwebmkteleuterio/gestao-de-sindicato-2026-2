@@ -333,15 +333,26 @@ const MassEmailPanel = () => {
       const { data: overdue } = await supabase.from("overdue_invoices_view").select("*");
       if (!overdue || overdue.length === 0) throw new Error("Nenhuma fatura atrasada encontrada.");
 
-      const queueEntries = overdue.map(item => ({
-        company_id: item.company_id,
-        invoice_id: item.invoice_id,
-        email_type: 'cobrança_atraso',
-        recipient_email: item.company_email,
-        status: 'pending'
-      }));
+      // Agrupar por empresa e determinar destinatário (Contabilidade > Empresa)
+      const companyMap = new Map();
+      overdue.forEach(item => {
+        if (!companyMap.has(item.company_id)) {
+          companyMap.set(item.company_id, {
+            company_id: item.company_id,
+            recipient_email: item.accounting_email || item.company_email,
+            email_type: 'cobrança_atraso',
+            status: 'pending'
+          });
+        }
+      });
 
-      const { error } = await supabase.from("email_queue").upsert(queueEntries, { onConflict: 'invoice_id,email_type' });
+      const queueEntries = Array.from(companyMap.values());
+
+      // Inserir na fila ignorando duplicatas de cobranças pendentes
+      const { error } = await supabase.from("email_queue").upsert(queueEntries, {
+        onConflict: 'company_id,email_type',
+        ignoreDuplicates: true
+      });
       if (error) throw error;
     },
     onSuccess: () => {

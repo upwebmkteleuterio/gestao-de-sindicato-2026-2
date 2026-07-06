@@ -30,14 +30,13 @@ serve(async (req) => {
     // 3. Pegar próximos itens da fila
     const { data: queueItems, error: queueError } = await supabase
       .from('email_queue')
-      .select('*, companies(name, cnpj), invoices(amount, due_date, month_year)')
+      .select('*, companies(id, name, cnpj)')
       .eq('status', 'pending')
       .order('created_at', { ascending: true })
       .limit(currentBatchSize)
 
     if (queueError) throw queueError
     if (!queueItems || queueItems.length === 0) {
-      console.log("[process-email-queue] Fila vazia.")
       return new Response(JSON.stringify({ message: "Queue empty" }), { status: 200 })
     }
 
@@ -53,13 +52,27 @@ serve(async (req) => {
       try {
         const from = `${settings.sender_email_prefix}@secbm.org.br`
         
-        // Substituir Placeholders (Simplificado para o exemplo)
+        // BUSCAR TODAS AS FATURAS PENDENTES DA EMPRESA PARA O PLACEHOLDER
+        const { data: overdueInvoices } = await supabase
+          .from('invoices')
+          .select('amount, due_date, description, month_year')
+          .eq('company_id', item.company_id)
+          .eq('status', 'Pendente')
+          .order('due_date', { ascending: true });
+
+        const invoiceListHtml = overdueInvoices?.map(inv => {
+          const formattedAmount = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(inv.amount);
+          const formattedDueDate = new Date(inv.due_date).toLocaleDateString('pt-BR');
+          const description = inv.description || inv.month_year || 'Fatura';
+          return `<li><strong>${formattedAmount}</strong> (Vencimento: ${formattedDueDate}) - ${description}</li>`;
+        }).join('') || '<li>Nenhuma fatura pendente localizada.</li>';
+
+        // Substituir Placeholders (Case-insensitive para segurança)
         let body = template.body_html
-          .replace('[NOME_EMPRESA]', item.companies?.name || 'Empresa')
-          .replace('[CNPJ]', item.companies?.cnpj || '')
-          .replace('[VALOR_FATURA]', `R$ ${item.invoices?.amount}`)
-          .replace('[DATA_VENCIMENTO]', new Date(item.invoices?.due_date).toLocaleDateString('pt-BR'))
-          .replace('[URL_SISTEMA]', settings.system_url)
+          .replace(/\[NOME_EMPRESA\]/gi, item.companies?.name || 'Empresa')
+          .replace(/\[CNPJ\]/gi, item.companies?.cnpj || '')
+          .replace(/\[LISTA_FATURAS\]/gi, invoiceListHtml)
+          .replace(/\[URL_SISTEMA\]/gi, settings.system_url);
 
         const res = await fetch("https://api.resend.com/emails", {
           method: "POST",
