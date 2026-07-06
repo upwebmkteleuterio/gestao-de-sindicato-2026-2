@@ -1,7 +1,9 @@
-import { useState, useEffect } from "react";
+"use client";
+
+import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,6 +11,18 @@ import RichTextEditor from "@/components/RichTextEditor";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
+import { 
+  Settings2, 
+  FileText, 
+  Send, 
+  Loader2, 
+  AlertCircle, 
+  CheckCircle2, 
+  Clock, 
+  MailWarning 
+} from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 
 // --- Types ---
 type SystemSettings = {
@@ -26,7 +40,7 @@ type EmailTemplate = {
   body_html: string;
 };
 
-// --- Hooks for Data Fetching and Mutation ---
+// --- Hooks ---
 
 const useSystemSettings = () => {
   return useQuery({
@@ -50,17 +64,10 @@ const useUpdateSystemSettings = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["systemSettings"] });
-      toast({
-        title: "Sucesso",
-        description: "Configurações de disparo atualizadas.",
-      });
+      toast({ title: "Sucesso", description: "Configurações atualizadas." });
     },
     onError: (error) => {
-      toast({
-        title: "Erro",
-        description: `Falha ao atualizar configurações: ${error.message}`,
-        variant: "destructive",
-      });
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
     },
   });
 };
@@ -87,22 +94,15 @@ const useUpdateEmailTemplate = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["emailTemplates"] });
-      toast({
-        title: "Sucesso",
-        description: "Template de e-mail atualizado.",
-      });
+      toast({ title: "Sucesso", description: "Template atualizado." });
     },
     onError: (error) => {
-      toast({
-        title: "Erro",
-        description: `Falha ao atualizar template: ${error.message}`,
-        variant: "destructive",
-      });
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
     },
   });
 };
 
-// --- Components ---
+// --- Sub-components ---
 
 const SystemConfigForm = () => {
   const { data: settings, isLoading } = useSystemSettings();
@@ -131,62 +131,58 @@ const SystemConfigForm = () => {
     }
   };
 
-  if (isLoading) return <p>Carregando configurações...</p>;
-  if (!settings) return <p>Erro ao carregar configurações.</p>;
+  if (isLoading) return <div className="flex justify-center p-8"><Loader2 className="animate-spin" /></div>;
 
   return (
-    <Card>
+    <Card className="border-slate-200 shadow-sm">
       <CardHeader>
-        <CardTitle>Configurações de Disparo</CardTitle>
+        <CardTitle className="text-xl font-bold flex items-center gap-2">
+          <Settings2 size={20} className="text-blue-600" />
+          Configurações de Disparo
+        </CardTitle>
+        <CardDescription>Defina os parâmetros técnicos para o envio de e-mails do sistema.</CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
               <Label htmlFor="senderPrefix">E-mail de Disparo (Prefixo)</Label>
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center">
                 <Input
                   id="senderPrefix"
                   value={prefix}
                   onChange={(e) => setPrefix(e.target.value)}
-                  required
-                  className="flex-grow"
+                  className="rounded-r-none border-r-0"
                 />
-                <span className="text-sm text-gray-500">@secbm.org.br</span>
+                <div className="h-10 px-3 flex items-center bg-slate-100 border border-slate-200 rounded-r-md text-slate-500 text-sm font-medium">
+                  @secbm.org.br
+                </div>
               </div>
-              <p className="text-xs text-gray-500">Apenas o valor antes do "@" pode ser alterado.</p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="systemUrl">URL do Sistema</Label>
               <Input
                 id="systemUrl"
-                type="url"
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
-                required
-                placeholder="https://seu-sistema.com.br"
+                placeholder="https://sistema.secbm.org.br"
               />
-              <p className="text-xs text-gray-500">URL base usada no botão de retorno ao sistema nos e-mails.</p>
             </div>
           </div>
           
-          <div className="space-y-2 max-w-md">
-            <Label htmlFor="collectionTarget">Meta de Eficiência de Cobrança (%)</Label>
+          <div className="space-y-2 max-w-xs">
+            <Label htmlFor="collectionTarget">Meta de Eficiência (%)</Label>
             <Input
               id="collectionTarget"
               type="number"
               value={target}
               onChange={(e) => setTarget(Number(e.target.value))}
-              required
-              min={0}
-              max={100}
-              className="max-w-[150px]"
             />
-            <p className="text-xs text-gray-500">Valor percentual para a meta de cobrança exibida no Dashboard.</p>
           </div>
 
-          <Button type="submit" disabled={updateSettings.isPending}>
-            {updateSettings.isPending ? "Salvando..." : "Salvar Configurações"}
+          <Button type="submit" className="bg-blue-600 hover:bg-blue-700" disabled={updateSettings.isPending}>
+            {updateSettings.isPending ? <Loader2 className="animate-spin mr-2" /> : null}
+            Salvar Configurações
           </Button>
         </form>
       </CardContent>
@@ -208,18 +204,13 @@ const TemplateEditor = ({ template }: { template: EmailTemplate }) => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    updateTemplate.mutate({
-      id: template.id,
-      subject: subject,
-      body_html: body,
-    });
+    updateTemplate.mutate({ id: template.id, subject, body_html: body });
   };
 
   const placeholders = template.name === 'fatura_retroativa'
     ? ['[NOME_EMPRESA]', '[CNPJ]', '[VALOR_FATURA]', '[DATA_VENCIMENTO]', '[URL_SISTEMA]']
     : ['[NOME_EMPRESA]', '[CNPJ]', '[LISTA_FATURAS]', '[URL_SISTEMA]'];
 
-  // Function to replace placeholders with sample data for preview
   const getPreviewHtml = () => {
     let previewHtml = body;
     const sampleData = {
@@ -228,7 +219,7 @@ const TemplateEditor = ({ template }: { template: EmailTemplate }) => {
       '[VALOR_FATURA]': 'R$ 1.500,00',
       '[DATA_VENCIMENTO]': '30/12/2024',
       '[URL_SISTEMA]': settings?.system_url || 'https://seu-sistema.com.br',
-      '[LISTA_FATURAS]': '<li>Fatura 1: R$ 500,00 (Vencimento: 01/10/2024)</li><li>Fatura 2: R$ 1.000,00 (Vencimento: 01/11/2024)</li>',
+      '[LISTA_FATURAS]': '<li>Fatura Out/24: R$ 500,00</li><li>Fatura Nov/24: R$ 500,00</li>',
     };
 
     for (const [key, value] of Object.entries(sampleData)) {
@@ -238,115 +229,230 @@ const TemplateEditor = ({ template }: { template: EmailTemplate }) => {
   };
 
   return (
-    <>
-      <Card>
-        <CardHeader>
-          <CardTitle>{template.title} ({template.name})</CardTitle>
+    <div className="space-y-4">
+      <Card className="border-slate-200 shadow-sm">
+        <CardHeader className="pb-4">
+          <div className="flex justify-between items-center">
+            <div>
+              <CardTitle className="text-lg font-bold">{template.title}</CardTitle>
+              <CardDescription>Código interno: {template.name}</CardDescription>
+            </div>
+            <Button variant="outline" size="sm" onClick={() => setIsPreviewOpen(true)}>Visualizar</Button>
+          </div>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor={`subject-${template.id}`}>Assunto do E-mail</Label>
-              <Input
-                id={`subject-${template.id}`}
-                value={subject}
-                onChange={(e) => setSubject(e.target.value)}
-                required
-              />
+              <Label>Assunto do E-mail</Label>
+              <Input value={subject} onChange={(e) => setSubject(e.target.value)} required />
             </div>
-            
-            {/* Simplified Editor for Text/HTML */}
             <div className="space-y-2">
-              <div className="flex justify-between items-center">
-                <Label htmlFor={`body-${template.id}`}>Corpo do E-mail (Visual)</Label>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setIsPreviewOpen(true)}
-                  className="text-xs"
-                >
-                  Ver Prévia Dinâmica
-                </Button>
+              <Label>Conteúdo do E-mail</Label>
+              <RichTextEditor value={body} onChange={setBody} className="min-h-[400px]" />
+              <div className="flex flex-wrap gap-2 pt-2">
+                {placeholders.map(p => (
+                  <Badge key={p} variant="secondary" className="text-[10px] font-mono">{p}</Badge>
+                ))}
               </div>
-              <RichTextEditor
-                value={body}
-                onChange={setBody}
-                className="min-h-[300px]"
-              />
-              <p className="text-xs text-gray-500">
-                Placeholders disponíveis: {placeholders.join(', ')}
-              </p>
             </div>
-
-            <Button type="submit" disabled={updateTemplate.isPending}>
-              {updateTemplate.isPending ? "Salvando..." : "Salvar Template"}
+            <Button type="submit" className="bg-blue-600" disabled={updateTemplate.isPending}>
+              {updateTemplate.isPending ? <Loader2 className="animate-spin mr-2" /> : null}
+              Salvar Template
             </Button>
           </form>
         </CardContent>
       </Card>
 
-      {/* Preview Modal */}
       <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
-        <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto rounded-2xl">
           <DialogHeader>
-            <DialogTitle>Pré-visualização do E-mail ({template.name})</DialogTitle>
+            <DialogTitle>Prévia do Template: {template.title}</DialogTitle>
           </DialogHeader>
-          <div className="p-4 border rounded-lg bg-gray-50">
-            <p className="text-sm text-gray-600 mb-3">
-              **Esta pré-visualização usa dados de exemplo e a URL do sistema configurada.**
-            </p>
-            <div className="bg-white p-4 shadow-lg rounded-lg" dangerouslySetInnerHTML={{ __html: getPreviewHtml() }} />
-          </div>
+          <div className="bg-white p-6 shadow-inner rounded-xl border border-slate-100" dangerouslySetInnerHTML={{ __html: getPreviewHtml() }} />
         </DialogContent>
       </Dialog>
-    </>
+    </div>
+  );
+};
+
+const MassEmailPanel = () => {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  
+  const { data: overdueCount = 0, isLoading: isLoadingOverdue } = useQuery({
+    queryKey: ["overdueInvoicesCount"],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("overdue_invoices_view")
+        .select("*", { count: 'exact', head: true });
+      if (error) throw error;
+      return count || 0;
+    }
+  });
+
+  const { data: queueStats } = useQuery({
+    queryKey: ["emailQueueStats"],
+    queryFn: async () => {
+      const { data: dailySent } = await supabase.rpc('get_daily_email_count');
+      const { count: pending } = await supabase.from("email_queue").select("*", { count: 'exact', head: true }).eq("status", "pending");
+      const { count: totalSent } = await supabase.from("email_queue").select("*", { count: 'exact', head: true }).eq("status", "sent");
+      
+      return {
+        dailySent: dailySent || 0,
+        pending: pending || 0,
+        totalSent: totalSent || 0,
+        limit: 100
+      };
+    },
+    refetchInterval: 10000 // Atualiza a cada 10s
+  });
+
+  const enqueueMutation = useMutation({
+    mutationFn: async () => {
+      // 1. Buscar empresas atrasadas da view
+      const { data: overdue } = await supabase.from("overdue_invoices_view").select("*");
+      if (!overdue || overdue.length === 0) throw new Error("Nenhuma fatura atrasada encontrada.");
+
+      // 2. Inserir na fila ignorando duplicatas (uma cobrança por fatura)
+      const queueEntries = overdue.map(item => ({
+        company_id: item.company_id,
+        invoice_id: item.invoice_id,
+        email_type: 'cobrança_atraso',
+        recipient_email: item.company_email,
+        status: 'pending'
+      }));
+
+      const { error } = await supabase.from("email_queue").upsert(queueEntries, { onConflict: 'invoice_id,email_type' });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["emailQueueStats"] });
+      toast({ title: "Fila Gerada", description: "As cobranças foram adicionadas à fila de processamento." });
+    },
+    onError: (error: any) => {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+    }
+  });
+
+  const dailyProgress = Math.min(((queueStats?.dailySent || 0) / 100) * 100, 100);
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card className="bg-white border-slate-200">
+          <CardHeader className="pb-2">
+            <CardDescription className="text-[10px] font-black uppercase tracking-widest">Faturas em Atraso</CardDescription>
+            <CardTitle className="text-3xl font-black text-slate-900">
+              {isLoadingOverdue ? <Loader2 className="animate-spin size-6" /> : overdueCount}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-xs text-slate-500">Total de faturas pendentes com vencimento ultrapassado.</p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-white border-slate-200">
+          <CardHeader className="pb-2">
+            <CardDescription className="text-[10px] font-black uppercase tracking-widest">Aguardando na Fila</CardDescription>
+            <CardTitle className="text-3xl font-black text-blue-600">{queueStats?.pending || 0}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-xs text-slate-500">E-mails que serão processados automaticamente em lotes.</p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-slate-900 text-white border-0">
+          <CardHeader className="pb-2">
+            <CardDescription className="text-[10px] font-black uppercase tracking-widest text-slate-400">Limite Diário (Resend)</CardDescription>
+            <CardTitle className="text-3xl font-black">{queueStats?.dailySent || 0} <span className="text-lg text-slate-500 font-medium">/ 100</span></CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Progress value={dailyProgress} className="h-2 bg-slate-800" />
+            <div className="flex justify-between items-center text-[10px] font-bold uppercase">
+              <span className={queueStats?.dailySent === 100 ? "text-amber-400" : "text-emerald-400"}>
+                {queueStats?.dailySent === 100 ? "Limite Atingido" : "Disponível"}
+              </span>
+              <span className="text-slate-500">Renovação: 00:00h</span>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card className="border-blue-100 bg-blue-50/30">
+        <CardHeader>
+          <CardTitle className="text-xl font-bold flex items-center gap-2 text-slate-900">
+            <MailWarning size={22} className="text-blue-600" />
+            Iniciar Disparo de Cobrança em Massa
+          </CardTitle>
+          <CardDescription className="text-slate-600">
+            Este processo irá identificar todas as {overdueCount} faturas atrasadas e adicioná-las à fila. 
+            O sistema enviará automaticamente até 100 e-mails por dia para respeitar os limites.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col md:flex-row items-center gap-6">
+          <Button
+            size="lg"
+            className="bg-blue-600 hover:bg-blue-700 h-14 px-10 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-blue-500/20"
+            onClick={() => enqueueMutation.mutate()}
+            disabled={enqueueMutation.isPending || overdueCount === 0}
+          >
+            {enqueueMutation.isPending ? <Loader2 className="animate-spin mr-2" /> : <Send size={18} className="mr-2" />}
+            Gerar Fila de Cobrança
+          </Button>
+        </CardContent>
+      </Card>
+    </div>
   );
 };
 
 const EmailTemplates = () => {
   const { data: templates, isLoading: templatesLoading } = useEmailTemplates();
 
-  if (templatesLoading) return <p>Carregando templates...</p>;
+  if (templatesLoading) return <div className="flex h-screen items-center justify-center"><Loader2 className="animate-spin size-10 text-blue-600" /></div>;
 
   const retroativaTemplate = templates?.find(t => t.name === 'fatura_retroativa');
   const pendenteTemplate = templates?.find(t => t.name === 'cobranca_pendente');
 
   return (
-    <div className="space-y-6 p-6">
-      <h1 className="text-3xl font-bold">Email e Templates</h1>
-      
-      <SystemConfigForm />
+    <div className="p-6 lg:p-10 bg-[#f8f9fc] min-h-full animate-in fade-in duration-500">
+      <div className="max-w-6xl mx-auto space-y-8">
+        <div>
+          <h1 className="text-3xl font-black text-slate-900 tracking-tight">Email e Comunicação</h1>
+          <p className="text-slate-500 mt-1">Gerencie templates, configurações e disparos automáticos.</p>
+        </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Templates de E-mail</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Tabs defaultValue="retroativa">
-            <TabsList>
-              <TabsTrigger value="retroativa">Fatura Retroativa</TabsTrigger>
-              <TabsTrigger value="pendente">Cobrança Pendente</TabsTrigger>
-            </TabsList>
-            <div className="mt-4">
-              <TabsContent value="retroativa">
-                {retroativaTemplate ? (
-                  <TemplateEditor template={retroativaTemplate} />
-                ) : (
-                  <p>Template 'fatura_retroativa' não encontrado.</p>
-                )}
-              </TabsContent>
-              <TabsContent value="pendente">
-                {pendenteTemplate ? (
-                  <TemplateEditor template={pendenteTemplate} />
-                ) : (
-                  <p>Template 'cobranca_pendente' não encontrado.</p>
-                )}
-              </TabsContent>
+        <Tabs defaultValue="mass" className="space-y-6">
+          <TabsList className="bg-slate-200/50 p-1 rounded-2xl h-14">
+            <TabsTrigger value="config" className="rounded-xl px-8 h-12 text-sm font-bold data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-md">
+              <Settings2 size={16} className="mr-2" />
+              Configuração
+            </TabsTrigger>
+            <TabsTrigger value="templates" className="rounded-xl px-8 h-12 text-sm font-bold data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-md">
+              <FileText size={16} className="mr-2" />
+              Templates
+            </TabsTrigger>
+            <TabsTrigger value="mass" className="rounded-xl px-8 h-12 text-sm font-bold data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-md">
+              <Send size={16} className="mr-2" />
+              Disparo em Massa
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="config" className="animate-in slide-in-from-bottom-2 duration-300">
+            <SystemConfigForm />
+          </TabsContent>
+
+          <TabsContent value="templates" className="animate-in slide-in-from-bottom-2 duration-300">
+            <div className="grid gap-6">
+              {retroativaTemplate && <TemplateEditor template={retroativaTemplate} />}
+              {pendenteTemplate && <TemplateEditor template={pendenteTemplate} />}
             </div>
-          </Tabs>
-        </CardContent>
-      </Card>
+          </TabsContent>
+
+          <TabsContent value="mass" className="animate-in slide-in-from-bottom-2 duration-300">
+            <MassEmailPanel />
+          </TabsContent>
+        </Tabs>
+      </div>
     </div>
   );
 };
