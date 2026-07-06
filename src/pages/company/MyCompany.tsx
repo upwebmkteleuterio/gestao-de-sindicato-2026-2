@@ -66,8 +66,10 @@ const MyCompany = () => {
 
   const isPending = company?.status === 'pending';
   const isRejected = company?.status === 'rejected';
+  const isOnboarding = company?.status === 'onboarding';
 
   const statusInfo: any = {
+    onboarding: { label: "Cadastro Incompleto", color: "bg-blue-100 text-blue-700 border-blue-200", icon: <Info size={16} /> },
     pending: { label: "Aguardando Aprovação", color: "bg-amber-100 text-amber-700 border-amber-200", icon: <Clock size={16} /> },
     approved: { label: "Cadastro Aprovado", color: "bg-emerald-100 text-emerald-700 border-emerald-200", icon: <CheckCircle2 size={16} /> },
     rejected: { label: "Cadastro Recusado", color: "bg-red-100 text-red-700 border-red-200", icon: <XCircle size={16} /> },
@@ -92,10 +94,17 @@ const MyCompany = () => {
           </div>
         )}
 
-        {isPending && (
+        {isOnboarding && (
           <div className="bg-blue-50 border border-blue-100 p-4 rounded-xl flex items-center gap-3">
             <Info size={18} className="text-blue-600" />
-            <p className="text-sm text-blue-800 font-medium">Os campos estão bloqueados para edição enquanto o sindicato analisa sua última alteração.</p>
+            <p className="text-sm text-blue-800 font-medium">Bem-vindo! Complete as informações abaixo para enviar seu cadastro para aprovação.</p>
+          </div>
+        )}
+
+        {isPending && (
+          <div className="bg-amber-50 border border-amber-100 p-4 rounded-xl flex items-center gap-3">
+            <Clock size={18} className="text-amber-600" />
+            <p className="text-sm text-amber-800 font-medium">Os campos estão bloqueados para edição enquanto o sindicato analisa sua última alteração.</p>
           </div>
         )}
 

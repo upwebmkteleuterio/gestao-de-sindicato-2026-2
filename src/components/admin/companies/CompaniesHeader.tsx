@@ -116,6 +116,7 @@ const CompaniesHeader: React.FC<CompaniesHeaderProps> = ({
                   <SelectContent>
                     <SelectItem value="all">Todos Status</SelectItem>
                     <SelectItem value="approved">Aprovadas (Ativas)</SelectItem>
+                    <SelectItem value="onboarding">Incompletas (Onboarding)</SelectItem>
                     <SelectItem value="pending">Pendentes</SelectItem>
                     <SelectItem value="rejected">Recusadas</SelectItem>
                   </SelectContent>

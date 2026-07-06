@@ -9,6 +9,7 @@ const mapStatusToEnglish = (status: string): string => {
   if (!status) return 'pending';
   const s = status.toLowerCase().trim();
   if (s === 'pending' || s.includes('pendent')) return 'pending';
+  if (s === 'onboarding' || s.includes('incomplet')) return 'onboarding';
   if (s === 'approved' || s.includes('aprovad')) return 'approved';
   if (s === 'rejected' || s.includes('recusad')) return 'rejected';
   if (s === 'suspended' || s.includes('suspens')) return 'suspended';
@@ -46,6 +47,8 @@ export const useCompaniesManager = () => {
       if (statusFilter !== "all") {
         if (statusFilter === "pending") {
           query = query.or('status.eq.pending,status.eq.Pendente');
+        } else if (statusFilter === "onboarding") {
+          query = query.eq('status', 'onboarding');
         } else if (statusFilter === "approved") {
           query = query.or('status.eq.approved,status.eq.Aprovado,status.eq.Aprovada');
         } else if (statusFilter === "rejected") {
@@ -102,7 +105,7 @@ export const useCompaniesManager = () => {
             ? "bg-red-100 text-red-700 border-red-200"
             : "bg-blue-100 text-blue-700 border-blue-200";
         } else if (normalizedStatus !== 'approved') {
-          billingLabel = normalizedStatus === 'pending' ? "Em Análise" : "Recusado";
+          billingLabel = normalizedStatus === 'pending' ? "Em Análise" : (normalizedStatus === 'onboarding' ? "Em Onboarding" : "Recusado");
           billingColor = "bg-slate-100 text-slate-700 border-slate-200";
         }
 
