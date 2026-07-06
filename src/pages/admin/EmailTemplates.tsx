@@ -11,17 +11,19 @@ import RichTextEditor from "@/components/RichTextEditor";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
-import {
-  Settings2,
-  FileText,
-  Send,
-  Loader2,
-  AlertCircle,
-  CheckCircle2,
-  Clock,
+import { 
+  Settings2, 
+  FileText, 
+  Send, 
+  Loader2, 
+  AlertCircle, 
+  CheckCircle2, 
+  Clock, 
   MailWarning,
   Trash2,
-  RefreshCw
+  RefreshCw,
+  History,
+  Inbox
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -282,6 +284,7 @@ const MassEmailPanel = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isProcessing, setIsProcessing] = useState(false);
+  const [activeQueueTab, setActiveQueueTab] = useState<"pending" | "sent">("pending");
   
   const { data: overdueCount = 0, isLoading: isLoadingOverdue } = useQuery({
     queryKey: ["overdueInvoicesCount"],
@@ -295,7 +298,7 @@ const MassEmailPanel = () => {
   });
 
   const { data: queueItems = [] } = useQuery({
-    queryKey: ["emailQueueList"],
+    queryKey: ["emailQueueList", activeQueueTab],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("email_queue")
@@ -303,8 +306,9 @@ const MassEmailPanel = () => {
           *,
           companies (name)
         `)
-        .order('created_at', { ascending: false })
-        .limit(10);
+        .eq("status", activeQueueTab)
+        .order(activeQueueTab === 'sent' ? 'sent_at' : 'created_at', { ascending: false })
+        .limit(15);
       if (error) throw error;
       return data;
     },
@@ -348,10 +352,9 @@ const MassEmailPanel = () => {
 
       const queueEntries = Array.from(companyMap.values());
 
-      // Inserir na fila ignorando duplicatas de cobranças pendentes
+      // Inserir na fila usando upsert com a nova constraint de company_id, email_type
       const { error } = await supabase.from("email_queue").upsert(queueEntries, {
-        onConflict: 'company_id,email_type',
-        ignoreDuplicates: true
+        onConflict: 'company_id,email_type'
       });
       if (error) throw error;
     },
@@ -359,6 +362,9 @@ const MassEmailPanel = () => {
       queryClient.invalidateQueries({ queryKey: ["emailQueueStats"] });
       queryClient.invalidateQueries({ queryKey: ["emailQueueList"] });
       toast({ title: "Fila Gerada", description: "As cobranças foram adicionadas à fila de processamento." });
+    },
+    onError: (err: any) => {
+        toast({ title: "Erro ao gerar fila", description: err.message, variant: "destructive" });
     }
   });
 
@@ -399,10 +405,8 @@ const MassEmailPanel = () => {
 
   return (
     <div className="space-y-6">
-      {/* ... (Cards exist with search_replace update) ... */}
-
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="bg-white border-slate-200">
+        <Card className="bg-white border-slate-200 shadow-sm">
           <CardHeader className="pb-2">
             <CardDescription className="text-[10px] font-black uppercase tracking-widest">Faturas em Atraso</CardDescription>
             <CardTitle className="text-3xl font-black text-slate-900">
@@ -410,11 +414,11 @@ const MassEmailPanel = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-xs text-slate-500">Total de faturas pendentes com vencimento ultrapassado.</p>
+            <p className="text-xs text-slate-500">Total de pendências com vencimento ultrapassado.</p>
           </CardContent>
         </Card>
 
-        <Card className="bg-white border-slate-200">
+        <Card className="bg-white border-slate-200 shadow-sm">
           <CardHeader className="pb-2">
             <CardDescription className="text-[10px] font-black uppercase tracking-widest">
               Aguardando na Fila
@@ -423,11 +427,11 @@ const MassEmailPanel = () => {
             <CardTitle className="text-3xl font-black text-blue-600">{queueStats?.pending || 0}</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-xs text-slate-500">E-mails que serão processados automaticamente em lotes.</p>
+            <p className="text-xs text-slate-500">E-mails prontos para envio em lotes.</p>
           </CardContent>
         </Card>
 
-        <Card className="bg-slate-900 text-white border-0">
+        <Card className="bg-slate-900 text-white border-0 shadow-md">
           <CardHeader className="pb-2">
             <CardDescription className="text-[10px] font-black uppercase tracking-widest text-slate-400">Total disparos hoje</CardDescription>
             <CardTitle className="text-3xl font-black">{queueStats?.dailySent || 0} <span className="text-lg text-slate-500 font-medium">/ 100</span></CardTitle>
@@ -435,8 +439,8 @@ const MassEmailPanel = () => {
           <CardContent className="space-y-3">
             <Progress value={dailyProgress} className="h-2 bg-slate-800" />
             <div className="flex justify-between items-center text-[10px] font-bold uppercase">
-              <span className={queueStats?.dailySent === 100 ? "text-amber-400" : "text-emerald-400"}>
-                {queueStats?.dailySent === 100 ? "Limite Atingido" : "Disponível"}
+              <span className={queueStats?.dailySent >= 100 ? "text-amber-400" : "text-emerald-400"}>
+                {queueStats?.dailySent >= 100 ? "Limite Atingido" : "Disponível"}
               </span>
               <span className="text-slate-500">Renovação: 00:00h</span>
             </div>
@@ -451,14 +455,13 @@ const MassEmailPanel = () => {
             Iniciar Disparo de Cobrança em Massa
           </CardTitle>
           <CardDescription className="text-slate-600">
-            Este processo irá identificar todas as {overdueCount} faturas atrasadas e adicioná-las à fila. 
-            O sistema enviará automaticamente até 100 e-mails por dia para respeitar os limites.
+            Este processo identifica inadimplentes e agrupa faturas por empresa. O sistema respeita o limite diário enviando em lotes automáticos.
           </CardDescription>
         </CardHeader>
-        <CardContent className="flex flex-col md:flex-row items-center gap-6">
+        <CardContent>
           <div className="flex flex-wrap gap-3">
-            <Button
-              size="lg"
+            <Button 
+              size="lg" 
               className="bg-blue-600 hover:bg-blue-700 h-14 px-10 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-blue-500/20"
               onClick={() => enqueueMutation.mutate()}
               disabled={enqueueMutation.isPending || overdueCount === 0}
@@ -467,10 +470,10 @@ const MassEmailPanel = () => {
               Gerar Fila de Cobrança
             </Button>
 
-            <Button
-              size="lg"
+            <Button 
+              size="lg" 
               variant="outline"
-              className="h-14 px-8 rounded-2xl font-black text-xs uppercase tracking-widest border-slate-200 hover:bg-white"
+              className="h-14 px-8 rounded-2xl font-black text-xs uppercase tracking-widest border-slate-200 hover:bg-white bg-white shadow-sm"
               onClick={processBatchManual}
               disabled={isProcessing || (queueStats?.pending || 0) === 0 || queueStats?.dailySent >= 100}
             >
@@ -478,8 +481,8 @@ const MassEmailPanel = () => {
               Processar Lote Agora
             </Button>
 
-            <Button
-              size="lg"
+            <Button 
+              size="lg" 
               variant="ghost"
               className="h-14 px-6 rounded-2xl font-black text-xs uppercase tracking-widest text-red-500 hover:bg-red-50 hover:text-red-600"
               onClick={() => clearQueueMutation.mutate()}
@@ -492,26 +495,49 @@ const MassEmailPanel = () => {
         </CardContent>
       </Card>
 
-      {/* Tabela de Fila */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-          <h3 className="text-sm font-black uppercase tracking-wider text-slate-900">Monitoramento da Fila (Últimos 10)</h3>
-          <Badge variant="secondary" className="font-bold">Total na fila: {queueStats?.pending || 0}</Badge>
+      {/* Tabela de Monitoramento com Abas */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-12">
+        <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/30 flex items-center justify-between">
+          <h3 className="text-sm font-black uppercase tracking-wider text-slate-900 flex items-center gap-2">
+            <History size={18} className="text-slate-400" />
+            Monitoramento de Disparos
+          </h3>
+          
+          <Tabs value={activeQueueTab} onValueChange={(v) => setActiveQueueTab(v as any)} className="bg-slate-200/50 p-1 rounded-xl h-10">
+            <TabsList className="bg-transparent gap-1">
+              <TabsTrigger value="pending" className="rounded-lg px-4 h-8 text-[10px] font-black uppercase tracking-widest data-[state=active]:bg-white data-[state=active]:text-blue-600">
+                <Clock size={12} className="mr-1.5" />
+                Aguardando ({queueStats?.pending || 0})
+              </TabsTrigger>
+              <TabsTrigger value="sent" className="rounded-lg px-4 h-8 text-[10px] font-black uppercase tracking-widest data-[state=active]:bg-white data-[state=active]:text-emerald-600">
+                <CheckCircle2 size={12} className="mr-1.5" />
+                Enviados ({queueStats?.totalSent || 0})
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
         </div>
+
         <div className="overflow-x-auto">
           <table className="w-full text-left">
-            <thead className="bg-slate-50/50">
+            <thead className="bg-slate-50/50 border-b border-slate-100">
               <tr>
                 <th className="px-6 py-3 text-[10px] font-black text-slate-500 uppercase tracking-widest">Empresa</th>
-                <th className="px-6 py-3 text-[10px] font-black text-slate-500 uppercase tracking-widest">E-mail</th>
+                <th className="px-6 py-3 text-[10px] font-black text-slate-500 uppercase tracking-widest">Destinatário</th>
                 <th className="px-6 py-3 text-[10px] font-black text-slate-500 uppercase tracking-widest text-center">Status</th>
-                <th className="px-6 py-3 text-[10px] font-black text-slate-500 uppercase tracking-widest text-right">Data</th>
+                <th className="px-6 py-3 text-[10px] font-black text-slate-500 uppercase tracking-widest text-right">
+                  {activeQueueTab === 'sent' ? 'Data de Envio' : 'Adicionado em'}
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {queueItems.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-6 py-8 text-center text-slate-400 text-sm font-medium">Nenhum item na fila no momento.</td>
+                  <td colSpan={4} className="px-6 py-12 text-center">
+                    <div className="flex flex-col items-center gap-2 text-slate-400">
+                      <Inbox size={32} strokeWidth={1.5} />
+                      <p className="text-sm font-medium">Nenhum registro encontrado nesta categoria.</p>
+                    </div>
+                  </td>
                 </tr>
               ) : (
                 queueItems.map((item) => (
@@ -521,8 +547,8 @@ const MassEmailPanel = () => {
                     </td>
                     <td className="px-6 py-4 text-xs text-slate-500 font-mono">{item.recipient_email}</td>
                     <td className="px-6 py-4 text-center">
-                      <Badge
-                        variant="outline"
+                      <Badge 
+                        variant="outline" 
                         className={cn(
                           "font-black text-[9px] uppercase tracking-tighter",
                           item.status === 'sent' && "bg-emerald-50 text-emerald-600 border-emerald-100",
@@ -534,7 +560,7 @@ const MassEmailPanel = () => {
                       </Badge>
                     </td>
                     <td className="px-6 py-4 text-right text-[10px] font-medium text-slate-400">
-                      {new Date(item.created_at).toLocaleString('pt-BR')}
+                      {new Date(item.sent_at || item.created_at).toLocaleString('pt-BR')}
                     </td>
                   </tr>
                 ))
