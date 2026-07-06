@@ -38,54 +38,57 @@ export const useCompaniesManager = () => {
   const [companyToEdit, setCompanyToEdit] = useState<any | null>(null);
   const [accountingToEdit, setAccountingToEdit] = useState<any | null>(null);
 
-  // Consulta de Contabilidades
+  // Consulta de Contabilidades OTIMIZADA
   const { data: accountingData, isLoading: isLoadingAccounting } = useQuery({
     queryKey: ["admin-accounting", accountingSearchTerm],
     queryFn: async () => {
+      // 1. Buscar Escritórios
       let query = supabase.from("accounting_offices").select("*");
-      
       if (accountingSearchTerm) {
         query = query.or(`name.ilike.%${accountingSearchTerm}%,email.ilike.%${accountingSearchTerm}%`);
       }
-
       const { data: offices, error } = await query.order("name", { ascending: true });
       if (error) throw error;
 
-      // Buscar contagem de empresas e saúde financeira para cada contabilidade
-      const { data: companiesInfo } = await supabase
-        .from("companies")
-        .select("id, accounting_id, status");
+      // 2. Buscar Estatísticas do Banco (View accounting_stats)
+      const { data: stats } = await supabase.from("accounting_stats").select("*");
 
-      const { data: invoices } = await supabase
+      // 3. Buscar empresas sem contabilidade (Contagem agregada)
+      const { count: noAccCount } = await supabase
+        .from("companies")
+        .select("*", { count: 'exact', head: true })
+        .is("accounting_id", null);
+
+      // 4. Verificar dívidas de empresas sem contabilidade
+      const { data: noAccDebtCheck } = await supabase
         .from("invoices")
-        .select("company_id, status, due_date")
-        .not("status", "eq", "Pago");
+        .select("id")
+        .not("status", "eq", "Pago")
+        .in("company_id", (
+          await supabase.from("companies").select("id").is("accounting_id", null)
+        ).data?.map(c => c.id) || [])
+        .limit(1);
 
       const processed = offices.map(office => {
-        const linkedCompanies = companiesInfo?.filter(c => c.accounting_id === office.id) || [];
-        const companyIds = linkedCompanies.map(c => c.id);
-        
-        const debtCount = invoices?.filter(inv => companyIds.includes(inv.company_id)).length || 0;
+        const officeStat = stats?.find(s => s.accounting_id === office.id);
+        const hasDebt = officeStat?.has_debt || false;
         
         return {
           ...office,
-          companiesCount: linkedCompanies.length,
-          health: debtCount > 0 ? "Atenção" : "Regular",
-          healthColor: debtCount > 0 ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"
+          companiesCount: officeStat?.companies_count || 0,
+          health: hasDebt ? "Atenção" : "Regular",
+          healthColor: hasDebt ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"
         };
       });
 
-      // Adicionar a opção "Sem Contabilidade"
-      const noAccountingCompanies = companiesInfo?.filter(c => !c.accounting_id) || [];
-      const noAccDebt = invoices?.filter(inv => noAccountingCompanies.map(c => c.id).includes(inv.company_id)).length || 0;
-
+      // Adicionar a opção virtual "Sem Contabilidade"
       processed.push({
         id: "none",
         name: "Sem Contabilidade Vinculada",
         email: "N/A",
-        companiesCount: noAccountingCompanies.length,
-        health: noAccDebt > 0 ? "Atenção" : "Regular",
-        healthColor: noAccDebt > 0 ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700",
+        companiesCount: noAccCount || 0,
+        health: (noAccDebtCheck?.length || 0) > 0 ? "Atenção" : "Regular",
+        healthColor: (noAccDebtCheck?.length || 0) > 0 ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700",
         isVirtual: true
       });
 
