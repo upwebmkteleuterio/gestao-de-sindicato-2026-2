@@ -72,19 +72,21 @@ const AccountingListTable = ({
                 </td>
                 <td className="p-4 text-right">
                   {!office.isVirtual && (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => onEdit(office)}>
-                          <Edit className="mr-2 h-4 w-4" />
-                          Editar Dados
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    <div onClick={(e) => e.stopPropagation()}>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => onEdit(office)}>
+                            <Edit className="mr-2 h-4 w-4" />
+                            Editar Dados
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
                   )}
                 </td>
               </tr>
@@ -127,14 +129,14 @@ const Companies = () => {
     accountingToEdit, setAccountingToEdit,
   } = useCompaniesManager();
 
-  // Scroll to top when page changes
+  // Scroll to top when page changes or accounting filter is applied
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
     const scrollContainer = document.getElementById('scroll-container');
     if (scrollContainer) {
       scrollContainer.scrollTop = 0;
     }
-  }, [currentPage]);
+  }, [currentPage, accountingFilter]);
 
   return (
     <div className="flex flex-col h-full animate-in fade-in duration-500 relative bg-[#f8f9fc]">
@@ -165,8 +167,11 @@ const Companies = () => {
             <div className="mb-6 animate-in slide-in-from-top-4 duration-300">
               <div className="bg-blue-600 rounded-2xl p-4 flex items-center justify-between text-white shadow-lg shadow-blue-200">
                 <div className="flex items-center gap-4">
-                  <button 
-                    onClick={() => setAccountingFilter(null)}
+                  <button
+                    onClick={() => {
+                      setAccountingFilter(null);
+                      setActiveTab("accounting");
+                    }}
                     className="p-2 hover:bg-white/10 rounded-xl transition-colors"
                   >
                     <ArrowLeft size={20} />
