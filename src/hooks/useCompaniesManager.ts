@@ -13,6 +13,7 @@ const mapStatusToEnglish = (status: string): string => {
   if (s === 'approved' || s.includes('aprovad')) return 'approved';
   if (s === 'rejected' || s.includes('recusad')) return 'rejected';
   if (s === 'suspended' || s.includes('suspens')) return 'suspended';
+  if (s === 'deleted' || s.includes('excluid')) return 'deleted';
   return s;
 };
 
@@ -27,13 +28,75 @@ export const useCompaniesManager = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 50; 
 
+  const [activeTab, setActiveTab] = useState<"companies" | "accounting">("companies");
+  const [accountingFilter, setAccountingFilter] = useState<any | null>(null);
+  const [accountingSearchTerm, setAccountingSearchTerm] = useState("");
+
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
   const [selectedEmployee, setSelectedEmployee] = useState<any | null>(null);
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
   const [companyToEdit, setCompanyToEdit] = useState<any | null>(null);
+  const [accountingToEdit, setAccountingToEdit] = useState<any | null>(null);
 
+  // Consulta de Contabilidades
+  const { data: accountingData, isLoading: isLoadingAccounting } = useQuery({
+    queryKey: ["admin-accounting", accountingSearchTerm],
+    queryFn: async () => {
+      let query = supabase.from("accounting_offices").select("*");
+      
+      if (accountingSearchTerm) {
+        query = query.or(`name.ilike.%${accountingSearchTerm}%,email.ilike.%${accountingSearchTerm}%`);
+      }
+
+      const { data: offices, error } = await query.order("name", { ascending: true });
+      if (error) throw error;
+
+      // Buscar contagem de empresas e saúde financeira para cada contabilidade
+      const { data: companiesInfo } = await supabase
+        .from("companies")
+        .select("id, accounting_id, status");
+
+      const { data: invoices } = await supabase
+        .from("invoices")
+        .select("company_id, status, due_date")
+        .not("status", "eq", "Pago");
+
+      const processed = offices.map(office => {
+        const linkedCompanies = companiesInfo?.filter(c => c.accounting_id === office.id) || [];
+        const companyIds = linkedCompanies.map(c => c.id);
+        
+        const debtCount = invoices?.filter(inv => companyIds.includes(inv.company_id)).length || 0;
+        
+        return {
+          ...office,
+          companiesCount: linkedCompanies.length,
+          health: debtCount > 0 ? "Atenção" : "Regular",
+          healthColor: debtCount > 0 ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"
+        };
+      });
+
+      // Adicionar a opção "Sem Contabilidade"
+      const noAccountingCompanies = companiesInfo?.filter(c => !c.accounting_id) || [];
+      const noAccDebt = invoices?.filter(inv => noAccountingCompanies.map(c => c.id).includes(inv.company_id)).length || 0;
+
+      processed.push({
+        id: "none",
+        name: "Sem Contabilidade Vinculada",
+        email: "N/A",
+        companiesCount: noAccountingCompanies.length,
+        health: noAccDebt > 0 ? "Atenção" : "Regular",
+        healthColor: noAccDebt > 0 ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700",
+        isVirtual: true
+      });
+
+      return processed;
+    },
+    enabled: !!user && activeTab === "accounting",
+  });
+
+  // Consulta de Empresas
   const { data, isLoading: isLoadingCompanies } = useQuery({
-    queryKey: ["admin-companies", searchTerm, statusFilter, sortOrder, employeeFilter, currentPage],
+    queryKey: ["admin-companies", searchTerm, statusFilter, sortOrder, employeeFilter, currentPage, accountingFilter?.id],
     queryFn: async () => {
       const { data: settings } = await supabase.from('financial_settings').select('grace_period_days').order('updated_at', { ascending: false }).limit(1).single();
       const graceDays = settings?.grace_period_days || 0;
@@ -43,8 +106,16 @@ export const useCompaniesManager = () => {
       if (searchTerm) {
         query = query.or(`name.ilike.%${searchTerm}%,cnpj.ilike.%${searchTerm}%`);
       }
+
+      if (accountingFilter) {
+        if (accountingFilter.id === "none") {
+          query = query.is("accounting_id", null);
+        } else {
+          query = query.eq("accounting_id", accountingFilter.id);
+        }
+      }
       
-      if (statusFilter !== "all") {
+      if (statusFilter !== "all" && !accountingFilter) {
         if (statusFilter === "pending") {
           query = query.or('status.eq.pending,status.eq.Pendente');
         } else if (statusFilter === "onboarding") {
@@ -53,6 +124,8 @@ export const useCompaniesManager = () => {
           query = query.or('status.eq.approved,status.eq.Aprovado,status.eq.Aprovada');
         } else if (statusFilter === "rejected") {
           query = query.or('status.eq.rejected,status.eq.Recusado,status.eq.Recusada');
+        } else if (statusFilter === "deleted") {
+          query = query.eq('status', 'deleted');
         } else {
           query = query.eq("status", statusFilter);
         }
@@ -105,7 +178,7 @@ export const useCompaniesManager = () => {
             ? "bg-red-100 text-red-700 border-red-200"
             : "bg-blue-100 text-blue-700 border-blue-200";
         } else if (normalizedStatus !== 'approved') {
-          billingLabel = normalizedStatus === 'pending' ? "Em Análise" : (normalizedStatus === 'onboarding' ? "Em Onboarding" : "Recusado");
+          billingLabel = normalizedStatus === 'pending' ? "Em Análise" : (normalizedStatus === 'onboarding' ? "Em Onboarding" : (normalizedStatus === 'deleted' ? "Excluída" : "Recusado"));
           billingColor = "bg-slate-100 text-slate-700 border-slate-200";
         }
 
@@ -130,7 +203,7 @@ export const useCompaniesManager = () => {
         total: totalCount || 0
       };
     },
-    enabled: !!user,
+    enabled: !!user && activeTab === "companies",
   });
 
   const storedCompanies = data?.companies || [];
@@ -182,6 +255,21 @@ export const useCompaniesManager = () => {
       return data;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin-companies"] })
+  });
+
+  const saveAccountingMutation = useMutation({
+    mutationFn: async (accountingData: any) => {
+      const { data, error } = await supabase.from("accounting_offices").upsert(accountingData).select().single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-accounting"] });
+      toast.success("Contabilidade salva com sucesso!");
+    },
+    onError: (error: any) => {
+      toast.error("Erro ao salvar contabilidade: " + error.message);
+    }
   });
 
   const deleteMutation = useMutation({
@@ -236,7 +324,14 @@ export const useCompaniesManager = () => {
     saveCompany: (data: any) => saveCompanyMutation.mutate(data),
     isSavingCompany: saveCompanyMutation.isPending,
     handleEditCompany: (company: any) => { setCompanyToEdit(company); setIsNewModalOpen(true); },
-    handleCloseModal: () => { setIsNewModalOpen(false); setCompanyToEdit(null); },
+    handleCloseModal: () => { setIsNewModalOpen(false); setCompanyToEdit(null); setAccountingToEdit(null); },
     handleUpdateApprovalStatus,
+    // Novos Retornos de Contabilidade
+    activeTab, setActiveTab,
+    accountingFilter, setAccountingFilter,
+    accountingSearchTerm, setAccountingSearchTerm,
+    accountingData, isLoadingAccounting,
+    saveAccounting: (data: any) => saveAccountingMutation.mutate(data),
+    accountingToEdit, setAccountingToEdit,
   };
 };

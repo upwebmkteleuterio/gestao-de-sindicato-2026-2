@@ -30,7 +30,7 @@ const MyCompany = () => {
   const [formData, setFormData] = useState({
     name: "", cnpj: "", email: "", phone: "", whatsapp: "",
     street: "", number: "", neighborhood: "", city: "", state: "", zip_code: "",
-    representative_name: "", representative_cpf: "",
+    representative_name: "", representative_cpf: "", accounting_email: ""
   });
 
   // Estado para comparar se houve mudanças
@@ -50,6 +50,7 @@ const MyCompany = () => {
       zip_code: company.zip_code ? maskCEP(company.zip_code) : "",
       representative_name: company.representative_name || "",
       representative_cpf: company.representative_cpf || "",
+      accounting_email: company.accounting_email || ""
     };
   }, [company]);
 
@@ -74,7 +75,6 @@ const MyCompany = () => {
       toast.error("CNPJ inválido.");
       return;
     }
-    // Ao salvar, o status vai para pending se for onboarding ou aprovado
     await updateCompany.mutateAsync(formData);
   };
 
@@ -98,7 +98,6 @@ const MyCompany = () => {
 
   const handleDeleteAccount = async () => {
     try {
-      // Soft delete: muda status para 'deleted'
       const { error } = await supabase
         .from('companies')
         .update({ status: 'deleted' })
@@ -128,7 +127,7 @@ const MyCompany = () => {
     onboarding: { label: "Cadastro Incompleto", color: "bg-blue-100 text-blue-700 border-blue-200", icon: <Info size={16} /> },
     pending: { label: "Aguardando Aprovação", color: "bg-amber-100 text-amber-700 border-amber-200", icon: <Clock size={16} /> },
     approved: { label: "Cadastro Aprovado", color: "bg-emerald-100 text-emerald-700 border-emerald-200", icon: <CheckCircle2 size={16} /> },
-    rejected: { label: "Cadastro Recusado", color: "bg-red-100 text-red-700 border-red-200", icon: <XCircle size={16} /> },
+    rejected: { label: "Cadastro Recusado", color: "bg-red-100 text-red-800 border-red-200", icon: <XCircle size={16} /> },
     deleted: { label: "Conta Excluída", color: "bg-slate-200 text-slate-600 border-slate-300", icon: <Trash2 size={16} /> }
   };
 
@@ -190,9 +189,16 @@ const MyCompany = () => {
                 <Input disabled={isPending} value={formData.cnpj} onChange={e => setFormData({...formData, cnpj: maskCNPJ(e.target.value)})} />
               </div>
               <div className="grid gap-2 md:col-span-2">
-                <Label>E-mail Financeiro *</Label>
+                <Label>E-mail Financeiro da Empresa *</Label>
                 <Input disabled={isPending} type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
               </div>
+              
+              <div className="grid gap-2 md:col-span-2">
+                <Label>E-mail da Contabilidade</Label>
+                <Input disabled={isPending} type="email" value={formData.accounting_email} onChange={e => setFormData({...formData, accounting_email: e.target.value})} placeholder="ex: contato@contabilidade.com.br" />
+                <p className="text-[10px] text-slate-500">Informe o e-mail do escritório que gerencia suas faturas, se houver.</p>
+              </div>
+
               <div className="grid gap-2">
                 <Label>Telefone</Label>
                 <Input disabled={isPending} value={formData.phone} onChange={e => setFormData({...formData, phone: maskPhone(e.target.value)})} />
@@ -228,14 +234,8 @@ const MyCompany = () => {
               <div className="grid gap-2">
                 <Label>Estado *</Label>
                 <Select disabled={isPending} value={formData.state} onValueChange={v => setFormData({...formData, state: v})}>
-                  <SelectTrigger className="bg-white">
-                    <SelectValue placeholder="Selecione o Estado" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {BRAZILIAN_STATES.map((state) => (
-                      <SelectItem key={state.value} value={state.value}>{state.value} - {state.label}</SelectItem>
-                    ))}
-                  </SelectContent>
+                  <SelectTrigger className="bg-white"><SelectValue placeholder="UF" /></SelectTrigger>
+                  <SelectContent>{BRAZILIAN_STATES.map((state) => (<SelectItem key={state.value} value={state.value}>{state.value} - {state.label}</SelectItem>))}</SelectContent>
                 </Select>
               </div>
               <div className="grid gap-2 md:col-span-3">
@@ -278,16 +278,13 @@ const MyCompany = () => {
           )}
         </form>
 
-        {/* Seção de Segurança - Estilo Aba Fechada */}
         <section className="mt-4 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-20">
           <button 
             onClick={() => setIsSecuritySectionOpen(!isSecuritySectionOpen)}
             className="w-full px-6 py-4 flex items-center justify-between bg-slate-50/50 hover:bg-slate-100/50 transition-colors"
           >
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 rounded-lg text-blue-600">
-                <Lock size={18} />
-              </div>
+              <div className="p-2 bg-blue-100 rounded-lg text-blue-600"><Lock size={18} /></div>
               <div className="text-left">
                 <h3 className="text-base font-bold text-slate-900">Segurança e Conta</h3>
                 <p className="text-xs text-slate-500">Gerencie sua senha e privacidade da conta.</p>
@@ -302,17 +299,8 @@ const MyCompany = () => {
                 <div className="grid gap-2">
                   <Label>Alterar Senha</Label>
                   <div className="flex gap-2">
-                    <Input 
-                      type="password" 
-                      placeholder="Nova senha (mín. 6 caracteres)" 
-                      value={newPassword}
-                      onChange={e => setNewPassword(e.target.value)}
-                    />
-                    <Button 
-                      variant="outline" 
-                      onClick={handleChangePassword}
-                      disabled={isChangingPassword || !newPassword}
-                    >
+                    <Input type="password" placeholder="Nova senha" value={newPassword} onChange={e => setNewPassword(e.target.value)} />
+                    <Button variant="outline" onClick={handleChangePassword} disabled={isChangingPassword || !newPassword}>
                       {isChangingPassword ? <Loader2 className="animate-spin" /> : "Atualizar"}
                     </Button>
                   </div>
@@ -322,38 +310,22 @@ const MyCompany = () => {
               <div className="pt-6 border-t border-slate-100">
                 <div className="bg-red-50 border border-red-100 p-6 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-6">
                   <div className="flex items-start gap-4">
-                    <div className="p-2 bg-red-100 rounded-lg text-red-600">
-                      <ShieldAlert size={24} />
-                    </div>
+                    <div className="p-2 bg-red-100 rounded-lg text-red-600"><ShieldAlert size={24} /></div>
                     <div>
                       <h4 className="text-red-900 font-bold">Excluir Conta</h4>
-                      <p className="text-red-700 text-sm mt-1 max-w-lg">
-                        Ao clicar em excluir, você perderá acesso imediato ao sistema e a todos os dados da sua empresa. Esta ação é irreversível.
-                      </p>
+                      <p className="text-red-700 text-sm mt-1 max-w-lg">Ao clicar em excluir, você perderá acesso imediato ao sistema.</p>
                     </div>
                   </div>
-                  
                   <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="destructive" className="font-bold px-6 h-11 rounded-xl">
-                        Excluir Minha Conta
-                      </Button>
-                    </AlertDialogTrigger>
+                    <AlertDialogTrigger asChild><Button variant="destructive" className="font-bold px-6 h-11 rounded-xl">Excluir Minha Conta</Button></AlertDialogTrigger>
                     <AlertDialogContent className="rounded-3xl">
                       <AlertDialogHeader>
-                        <AlertDialogTitle>Tem certeza absoluta?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Esta ação irá desativar sua conta permanentemente. Você não conseguirá mais fazer login e precisará contatar o sindicato para qualquer recuperação.
-                        </AlertDialogDescription>
+                        <AlertDialogTitle>Tem certeza?</AlertDialogTitle>
+                        <AlertDialogDescription>Esta ação irá desativar sua conta permanentemente.</AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
                         <AlertDialogCancel className="rounded-xl">Cancelar</AlertDialogCancel>
-                        <AlertDialogAction 
-                          onClick={handleDeleteAccount}
-                          className="bg-red-600 hover:bg-red-700 rounded-xl font-bold"
-                        >
-                          Sim, Excluir Conta
-                        </AlertDialogAction>
+                        <AlertDialogAction onClick={handleDeleteAccount} className="bg-red-600 hover:bg-red-700 rounded-xl font-bold">Sim, Excluir</AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>
                   </AlertDialog>
