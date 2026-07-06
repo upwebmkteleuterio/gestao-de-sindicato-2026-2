@@ -10,7 +10,7 @@ import NewCompanyModal from "@/components/admin/companies/NewCompanyModal";
 import CompaniesTableSkeleton from "@/components/admin/companies/CompaniesTableSkeleton";
 import EmptyState from "@/components/shared/EmptyState";
 import { useCompaniesManager } from "@/hooks/useCompaniesManager";
-import { SearchX, Building2, ArrowLeft, MoreHorizontal, Edit, ExternalLink } from "lucide-react";
+import { SearchX, Building2, ArrowLeft, MoreHorizontal, Edit } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { 
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger 
@@ -43,6 +43,7 @@ const AccountingListTable = ({
             {offices.map((office) => (
               <tr 
                 key={office.id} 
+                data-acc-id={office.id}
                 className="group hover:bg-slate-50 transition-colors cursor-pointer"
                 onClick={() => onSelect(office)}
               >
@@ -100,6 +101,7 @@ const AccountingListTable = ({
 
 const Companies = () => {
   const lastSelectedId = useRef<string | null>(null);
+  const lastSelectedAccountingId = useRef<string | null>(null);
 
   const {
     searchTerm, setSearchTerm,
@@ -131,12 +133,62 @@ const Companies = () => {
 
   // Scroll to top when page changes or accounting filter is applied
   useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-    const scrollContainer = document.getElementById('scroll-container');
-    if (scrollContainer) {
-      scrollContainer.scrollTop = 0;
+    // Só scrolla pro topo se NÃO houver um ID para restaurar (evita conflito com o scrollIntoView)
+    if (activeTab === "companies" && !lastSelectedId.current) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      const scrollContainer = document.getElementById('scroll-container');
+      if (scrollContainer) {
+        scrollContainer.scrollTop = 0;
+      }
     }
-  }, [currentPage, accountingFilter]);
+  }, [currentPage, accountingFilter, activeTab]);
+
+  // Armazena o ID da contabilidade selecionada
+  useEffect(() => {
+    if (accountingFilter) {
+      lastSelectedAccountingId.current = accountingFilter.id;
+    }
+  }, [accountingFilter]);
+
+  // Restaura o scroll quando volta para a lista de contabilidades
+  useEffect(() => {
+    if (activeTab === "accounting" && lastSelectedAccountingId.current) {
+      const timer = setTimeout(() => {
+        const targetRow = document.querySelector(`[data-acc-id="${lastSelectedAccountingId.current}"]`);
+        if (targetRow) {
+          targetRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [activeTab]);
+
+  // Armazena o ID da última empresa selecionada para destacar e voltar scroll
+  useEffect(() => {
+    if (selectedCompany) {
+      lastSelectedId.current = selectedCompany.id;
+      // Forçamos o scroll para o topo de múltiplas formas para garantir
+      const scrollContainer = document.getElementById('scroll-container');
+      if (scrollContainer) {
+        scrollContainer.scrollTop = 0;
+      }
+      window.scrollTo(0, 0);
+    }
+  }, [selectedCompany]);
+
+  // Restaura o scroll quando volta para a lista
+  useEffect(() => {
+    if (!selectedCompany && lastSelectedId.current && activeTab === "companies") {
+      // Pequeno delay para garantir que a lista foi renderizada
+      const timer = setTimeout(() => {
+        const row = document.querySelector(`[data-id="${lastSelectedId.current}"]`);
+        if (row) {
+          row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [selectedCompany, activeTab]);
 
   return (
     <div className="flex flex-col h-full animate-in fade-in duration-500 relative bg-[#f8f9fc]">
@@ -167,7 +219,7 @@ const Companies = () => {
             <div className="mb-6 animate-in slide-in-from-top-4 duration-300">
               <div className="bg-blue-600 rounded-2xl p-4 flex items-center justify-between text-white shadow-lg shadow-blue-200">
                 <div className="flex items-center gap-4">
-                  <button
+                  <button 
                     onClick={() => {
                       setAccountingFilter(null);
                       setActiveTab("accounting");
