@@ -8,7 +8,17 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")
 const DAILY_LIMIT = 100
 const BATCH_SIZE = 10
 
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
 serve(async (req) => {
+  // Handle CORS preflight
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders })
+  }
+
   const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!)
 
   try {
@@ -20,7 +30,10 @@ serve(async (req) => {
 
     if (dailySent >= DAILY_LIMIT) {
       console.log("[process-email-queue] Limite diário atingido. Encerrando.")
-      return new Response(JSON.stringify({ message: "Daily limit reached", sent: dailySent }), { status: 200 })
+      return new Response(JSON.stringify({ message: "Daily limit reached", sent: dailySent }), { 
+        status: 200, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      })
     }
 
     // 2. Calcular espaço disponível no dia
@@ -37,7 +50,10 @@ serve(async (req) => {
 
     if (queueError) throw queueError
     if (!queueItems || queueItems.length === 0) {
-      return new Response(JSON.stringify({ message: "Queue empty" }), { status: 200 })
+      return new Response(JSON.stringify({ message: "Queue empty" }), { 
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      })
     }
 
     // 4. Buscar Template de Cobrança e Configurações
@@ -67,7 +83,7 @@ serve(async (req) => {
           return `<li><strong>${formattedAmount}</strong> (Vencimento: ${formattedDueDate}) - ${description}</li>`;
         }).join('') || '<li>Nenhuma fatura pendente localizada.</li>';
 
-        // Substituir Placeholders (Case-insensitive para segurança)
+        // Substituir Placeholders
         let body = template.body_html
           .replace(/\[NOME_EMPRESA\]/gi, item.companies?.name || 'Empresa')
           .replace(/\[CNPJ\]/gi, item.companies?.cnpj || '')
@@ -101,10 +117,16 @@ serve(async (req) => {
       }
     }
 
-    return new Response(JSON.stringify({ message: "Batch processed", results }), { status: 200 })
+    return new Response(JSON.stringify({ message: "Batch processed", results }), { 
+      status: 200,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+    })
 
   } catch (error) {
     console.error("[process-email-queue] Erro fatal:", error.message)
-    return new Response(JSON.stringify({ error: error.message }), { status: 500 })
+    return new Response(JSON.stringify({ error: error.message }), { 
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+    })
   }
 })
