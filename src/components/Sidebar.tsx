@@ -56,8 +56,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose, isCollapsed }) => {
     // { label: "Financeiro", icon: "payments", path: "/admin/financeiro" }, // Ocultado temporariamente
     { label: "Agenda", icon: "calendar_month", path: "/admin/agenda" },
     { label: "Jurídico", icon: "gavel", path: "/admin/juridico" },
-    { label: "Email e Templates", icon: "settings_suggest", path: "/admin/emails" },
-    { label: "Teste de emails", icon: "mail", path: "/admin/email-teste" },
+    { label: "Email e Templates", icon: "mail", path: "/admin/emails" },
     { label: "Configurações", icon: "settings", path: "/configuracoes" },
   ];
 

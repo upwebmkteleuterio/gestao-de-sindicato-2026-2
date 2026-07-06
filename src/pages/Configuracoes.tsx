@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Loader2, Save, Lock, CalendarClock } from "lucide-react";
+import { Loader2, Save, Lock, CalendarClock, ShieldCheck } from "lucide-react";
 
 const Configuracoes = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
   const [settings, setSettings] = useState({
     associate_fee: 20,
     semiannual_fee: 50,
@@ -67,6 +69,24 @@ const Configuracoes = () => {
     }
   };
 
+  const handleChangePassword = async () => {
+    if (newPassword.length < 6) {
+      toast.error("A senha deve ter pelo menos 6 caracteres.");
+      return;
+    }
+    setChangingPassword(true);
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) throw error;
+      toast.success("Sua senha foi alterada com sucesso!");
+      setNewPassword("");
+    } catch (err: any) {
+      toast.error("Erro ao alterar senha: " + err.message);
+    } finally {
+      setChangingPassword(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex h-full items-center justify-center">
@@ -82,7 +102,7 @@ const Configuracoes = () => {
           <div className="flex items-center gap-2 text-sm text-slate-500">
             <span className="hover:text-blue-600 cursor-pointer">Início</span>
             <span>/</span>
-            <span className="font-medium text-slate-900">Configurações Financeiras</span>
+            <span className="font-medium text-slate-900">Configurações do Sistema</span>
           </div>
         </div>
       </header>
@@ -90,15 +110,15 @@ const Configuracoes = () => {
       <div className="flex-1 overflow-y-auto px-6 py-8 lg:px-10 bg-[#f8f9fc]">
         <div className="max-w-7xl mx-auto flex flex-col gap-8">
           <div>
-            <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Políticas Financeiras</h1>
+            <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Painel de Configurações</h1>
             <p className="text-slate-500 mt-2 max-w-2xl text-sm leading-relaxed">
-              Defina as taxas e os prazos de tolerância para faturas em aberto.
+              Gerencie as políticas financeiras do sindicato e seus dados de acesso.
             </p>
           </div>
 
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
             <div className="border-b border-slate-100 px-8 py-5 bg-slate-50/50">
-              <h3 className="text-lg font-bold text-slate-900">Configuração de Valores e Prazos</h3>
+              <h3 className="text-lg font-bold text-slate-900">Políticas Financeiras</h3>
             </div>
             
             <div className="p-8">
@@ -152,7 +172,7 @@ const Configuracoes = () => {
             <div className="bg-slate-50 px-8 py-5 border-t border-slate-100 flex items-center justify-between">
               <div className="flex items-center gap-2 text-sm text-slate-500">
                 <Lock className="size-4" />
-                Protegido por políticas de Admin
+                Configurações protegidas
               </div>
               <button
                 onClick={handleSave}
@@ -160,8 +180,50 @@ const Configuracoes = () => {
                 className="flex items-center gap-2 px-8 py-2.5 text-sm font-bold text-white bg-blue-600 rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-500/20 transition-all disabled:opacity-50"
               >
                 {saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
-                Salvar Configurações
+                Salvar Alterações
               </button>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-12">
+            <div className="border-b border-slate-100 px-8 py-5 bg-slate-50/50">
+              <h3 className="text-lg font-bold text-slate-900">Segurança do Administrador</h3>
+            </div>
+            
+            <div className="p-8">
+              <div className="max-w-md space-y-6">
+                <div className="flex items-start gap-4">
+                  <div className="p-3 bg-blue-100 rounded-xl text-blue-600">
+                    <ShieldCheck size={24} />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-slate-900">Alterar Senha de Acesso</h4>
+                    <p className="text-sm text-slate-500 mt-1">Sua senha é pessoal e intransferível. Recomendamos o uso de senhas fortes.</p>
+                  </div>
+                </div>
+
+                <div className="space-y-4 pt-2">
+                  <div className="flex flex-col gap-2">
+                    <label className="text-sm font-bold text-slate-700">Nova Senha</label>
+                    <div className="flex gap-3">
+                      <input
+                        type="password"
+                        placeholder="Mínimo 6 caracteres"
+                        className="flex-1 rounded-xl border-slate-200 bg-slate-50 py-3 px-4 text-slate-900 font-medium focus:ring-2 focus:ring-blue-600/10 transition-all border"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                      />
+                      <button
+                        onClick={handleChangePassword}
+                        disabled={changingPassword || !newPassword}
+                        className="px-6 py-3 bg-slate-900 text-white rounded-xl text-sm font-bold hover:bg-slate-800 transition-all disabled:opacity-50"
+                      >
+                        {changingPassword ? <Loader2 className="size-4 animate-spin" /> : "Atualizar"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
