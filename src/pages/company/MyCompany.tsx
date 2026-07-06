@@ -42,7 +42,8 @@ const MyCompany = () => {
         representative_cpf: company.representative_cpf || "",
       });
       
-      if (!company.street || !company.zip_code) {
+      // Abre o modal apenas se faltarem dados essenciais do endereço
+      if (!company.street || !company.zip_code || !company.city) {
         setIsModalOpen(true);
       }
     }
