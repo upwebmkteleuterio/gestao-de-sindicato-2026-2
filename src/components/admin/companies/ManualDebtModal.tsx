@@ -83,6 +83,15 @@ const ManualDebtModal: React.FC<ManualDebtModalProps> = ({
     if (!formData.amount || !formData.description) return;
 
     const numericValue = Number(formData.amount.replace(/\D/g, "")) / 100;
+    if (numericValue < 5) {
+      toast({
+        title: "Valor inválido",
+        description: "Boletos do Asaas devem ter valor mínimo de R$ 5,00.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const invoiceData = {
       amount: numericValue,
       description: formData.description,

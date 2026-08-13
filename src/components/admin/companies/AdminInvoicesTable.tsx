@@ -3,13 +3,18 @@
 import React, { useState } from "react";
 import { cn } from "@/lib/utils";
 import { useFinancials } from "@/hooks/useFinancials";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
-import { 
-  CheckCircle2, 
-  Clock, 
-  MoreVertical, 
-  Edit2,
+import {
+  CheckCircle2,
+  Clock,
+  MoreVertical,
+  ExternalLink,
+  Copy,
+  Trash2,
   FileText
 } from "lucide-react";
 import {
@@ -27,8 +32,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import EditInvoiceStatusModal from "@/components/admin/financial/EditInvoiceStatusModal";
-
 interface AdminInvoicesTableProps {
   companyId: string;
 }
@@ -42,12 +45,39 @@ const AdminInvoicesTable: React.FC<AdminInvoicesTableProps> = ({ companyId }) =>
     setSelectedYear,
   } = useFinancials(companyId);
 
-  const [selectedInvoice, setSelectedInvoice] = useState<any | null>(null);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const queryClient = useQueryClient();
 
-  const handleEditStatus = (inv: any) => {
-    setSelectedInvoice(inv);
-    setIsEditModalOpen(true);
+  const deleteInvoiceMutation = useMutation({
+    mutationFn: async (invoice: any) => {
+      const { error } = await supabase.functions.invoke('delete-asaas-boleto', {
+        body: { invoiceId: invoice.id }
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['invoices', companyId] });
+      queryClient.invalidateQueries({ queryKey: ['admin-companies'] });
+      toast.success('Fatura retroativa excluída.');
+    },
+    onError: () => toast.error('Não foi possível excluir a fatura retroativa.')
+  });
+
+  const handleOpenBoleto = (invoice: any) => {
+    if (!invoice.bank_slip_url) {
+      toast.error('Esta fatura ainda não possui boleto emitido.');
+      return;
+    }
+    window.open(invoice.bank_slip_url, '_blank', 'noopener,noreferrer');
+  };
+
+  const handleCopyCode = async (code: string) => {
+    await navigator.clipboard.writeText(code);
+    toast.success('Linha digitável copiada.');
+  };
+
+  const handleDeleteRetroactive = (invoice: any) => {
+    if (!window.confirm('Excluir esta fatura retroativa? A cobrança correspondente no Asaas não será cancelada automaticamente.')) return;
+    deleteInvoiceMutation.mutate(invoice);
   };
 
   if (isLoading) return <Skeleton className="h-96 w-full rounded-2xl" />;
@@ -121,15 +151,31 @@ const AdminInvoicesTable: React.FC<AdminInvoicesTableProps> = ({ companyId }) =>
                         <DropdownMenuContent align="end" className="w-48">
                           <DropdownMenuLabel>Gestão Admin</DropdownMenuLabel>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem 
+                          <DropdownMenuItem
                             className="gap-2 cursor-pointer text-blue-600 font-bold"
-                            onClick={() => handleEditStatus(inv)}
+                            onClick={() => handleOpenBoleto(inv)}
                           >
-                            <Edit2 size={16} /> Editar Status
+                            <ExternalLink size={16} /> Visualizar Boleto
                           </DropdownMenuItem>
+                          {inv.identification_field && (
+                            <DropdownMenuItem
+                              className="gap-2 cursor-pointer"
+                              onClick={() => handleCopyCode(inv.identification_field)}
+                            >
+                              <Copy size={16} /> Copiar Linha Digitável
+                            </DropdownMenuItem>
+                          )}
                           <DropdownMenuItem className="gap-2 cursor-pointer">
-                            <FileText size={16} /> Ver Log de Auditoria
+                            <FileText size={16} /> Dados do Asaas: {inv.asaas_status || 'não emitido'}
                           </DropdownMenuItem>
+                          {inv.billing_type === 'Ajuste de Saldo' && (
+                            <DropdownMenuItem
+                              className="gap-2 cursor-pointer text-red-600 focus:text-red-600"
+                              onClick={() => handleDeleteRetroactive(inv)}
+                            >
+                              <Trash2 size={16} /> Excluir Fatura Retroativa
+                            </DropdownMenuItem>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </td>
@@ -140,15 +186,6 @@ const AdminInvoicesTable: React.FC<AdminInvoicesTableProps> = ({ companyId }) =>
           </table>
         </div>
       </div>
-
-      <EditInvoiceStatusModal 
-        isOpen={isEditModalOpen}
-        onClose={() => {
-          setIsEditModalOpen(false);
-          setSelectedInvoice(null);
-        }}
-        invoice={selectedInvoice}
-      />
     </>
   );
 };

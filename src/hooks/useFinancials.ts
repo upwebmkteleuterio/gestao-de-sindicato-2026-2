@@ -1,11 +1,9 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useCompany } from "./useCompany";
-import { toast } from "sonner";
 import { useState } from "react";
 
 export const useFinancials = (explicitCompanyId?: string) => {
-  const queryClient = useQueryClient();
   const { company: myCompany } = useCompany();
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
   
@@ -76,27 +74,6 @@ export const useFinancials = (explicitCompanyId?: string) => {
     enabled: !!targetCompanyId
   });
 
-  const updateInvoiceStatus = useMutation({
-    mutationFn: async ({ id, status, payment_origin }: { id: string, status: string, payment_origin?: string }) => {
-      const payload: any = { status };
-      if (payment_origin) payload.payment_origin = payment_origin;
-
-      const { data, error } = await supabase
-        .from('invoices')
-        .update(payload)
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['invoices', targetCompanyId] });
-      queryClient.invalidateQueries({ queryKey: ['admin-companies'] });
-      toast.success("Fatura atualizada com sucesso!");
-    }
-  });
 
   const stats = {
     pendingAmount: invoices?.filter(inv => inv.display_status === 'Pendente').reduce((acc, inv) => acc + Number(inv.amount), 0) || 0,
@@ -111,7 +88,6 @@ export const useFinancials = (explicitCompanyId?: string) => {
     availableYears,
     selectedYear,
     setSelectedYear,
-    stats,
-    updateInvoiceStatus
+    stats
   };
 };

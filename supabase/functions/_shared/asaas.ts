@@ -49,6 +49,10 @@ export const findOrCreateAsaasCustomer = async (company: any) => {
   })
 }
 
+export const deleteAsaasPayment = async (paymentId: string) => {
+  return asaasRequest(`/v3/payments/${encodeURIComponent(paymentId)}`, { method: 'DELETE' })
+}
+
 export const createAsaasBoleto = async ({ company, invoice }: { company: any, invoice: any }) => {
   const customer = await findOrCreateAsaasCustomer(company)
   const payment = await asaasRequest('/v3/payments', {
