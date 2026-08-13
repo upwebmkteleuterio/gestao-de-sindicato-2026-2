@@ -30,7 +30,9 @@ import LegalScheduling from "./pages/employee/LegalScheduling";
 import Jurisdictions from "./pages/employee/Jurisdictions";
 import NotFound from "./pages/NotFound";
 import Team from "./pages/admin/Team";
+import AdminEntry from "./pages/admin/AdminEntry";
 import { useAdminAccess } from "./hooks/useAdminAccess";
+
 import { useEffect } from "react";
 
 const ScrollToTop = () => {
@@ -102,6 +104,7 @@ const AuthenticatedLayout = ({ allowedRoles }: { allowedRoles?: string[] }) => {
 const RootRedirect = () => {
   const { session, loading: sessionLoading } = useSessionContext();
   const { data: profile, isLoading: profileLoading } = useProfile();
+  const { data: adminAccess, isLoading: adminAccessLoading, isError: adminAccessError } = useAdminAccess();
   
   if (sessionLoading) return <GlobalLoader />;
   if (!session) return <Navigate to="/login" replace />;
@@ -113,7 +116,11 @@ const RootRedirect = () => {
     return <Navigate to="/login" replace />;
   }
   
-  if (role === 'administrador') return <Navigate to="/admin" replace />;
+  if (role === 'administrador') {
+    if (adminAccessLoading) return <GlobalLoader message="Preparando seu acesso administrativo..." />;
+    if (adminAccessError || !adminAccess) return <Navigate to="/admin/entrada" replace />;
+    return <Navigate to={adminAccess.isSuperadmin ? "/admin" : "/admin/entrada"} replace />;
+  }
   if (role === 'empresa') return <Navigate to="/empresa" replace />;
   return <Navigate to="/funcionario/agendamento" replace />;
 };
@@ -130,19 +137,7 @@ const AdminMenuRoute = ({ menu, children }: { menu: string; children: React.Reac
   if (isLoading) return <GlobalLoader message="Verificando permissões..." />;
   if (!access?.isAdmin) return <Navigate to="/login" replace />;
   if (access.isSuperadmin || access.allowedMenus.includes(menu)) return <>{children}</>;
-
-  const firstAllowedRoute = [
-    ["dashboard", "/admin"],
-    ["aprovacoes", "/admin/aprovacoes"],
-    ["empresas", "/admin/empresas"],
-    ["importar", "/admin/importar"],
-    ["agenda", "/admin/agenda"],
-    ["juridico", "/admin/juridico"],
-    ["emails", "/admin/emails"],
-    ["configuracoes", "/configuracoes"],
-  ].find(([key]) => access.allowedMenus.includes(key));
-
-  return <Navigate to={firstAllowedRoute?.[1] ?? "/login"} replace />;
+  return <Navigate to="/admin/entrada" replace />;
 };
 
 const App = () => (
@@ -162,8 +157,10 @@ const App = () => (
             <Route path="/reset-password" element={<ResetPassword />} />
             
             <Route element={<AuthenticatedLayout allowedRoles={['administrador']} />}>
+              <Route path="/admin/entrada" element={<AdminEntry />} />
               <Route path="/admin">
                 <Route index element={<AdminMenuRoute menu="dashboard"><AdminDashboard /></AdminMenuRoute>} />
+
                 <Route path="aprovacoes" element={<AdminMenuRoute menu="aprovacoes"><Approvals /></AdminMenuRoute>} />
                 <Route path="empresas" element={<AdminMenuRoute menu="empresas"><Companies /></AdminMenuRoute>} />
                 <Route path="importar" element={<AdminMenuRoute menu="importar"><ImportCompanies /></AdminMenuRoute>} />
