@@ -74,9 +74,11 @@ const GlobalLoader = ({ message = "Sincronizando acesso..." }: { message?: strin
 const AuthenticatedLayout = ({ allowedRoles }: { allowedRoles?: string[] }) => {
   const { session, loading: sessionLoading } = useSessionContext();
   const { data: profile, isLoading: profileLoading } = useProfile();
+  const { data: adminAccess, isLoading: adminAccessLoading } = useAdminAccess();
   const location = useLocation();
   
   if (sessionLoading) return <GlobalLoader />;
+
   if (!session) return <Navigate to="/login" state={{ from: location }} replace />;
 
   const role = profile?.role || localStorage.getItem('sindicato_user_role');
@@ -87,14 +89,19 @@ const AuthenticatedLayout = ({ allowedRoles }: { allowedRoles?: string[] }) => {
 
   if (allowedRoles && role && !allowedRoles.includes(role)) {
     const homeMap: Record<string, string> = {
-      administrador: "/admin",
+      administrador: "/admin/entrada",
       empresa: "/empresa",
       funcionario: "/funcionario/agendamento"
     };
     return <Navigate to={homeMap[role] || "/"} replace />;
   }
 
+  const isRestrictedAdminPortal = role === "administrador" && (location.pathname.startsWith("/empresa") || location.pathname.startsWith("/funcionario"));
+  if (isRestrictedAdminPortal && adminAccessLoading) return <GlobalLoader message="Verificando permissões..." />;
+  if (isRestrictedAdminPortal && adminAccess && !adminAccess.isSuperadmin) return <Navigate to="/admin/entrada" replace />;
+
   return (
+
     <DashboardLayout>
       <Outlet />
     </DashboardLayout>

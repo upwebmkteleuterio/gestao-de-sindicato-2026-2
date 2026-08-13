@@ -21,7 +21,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose, isCollapsed }) => {
   const navigate = useNavigate();
   const { user, signOut } = useSessionContext();
   const { data: profile, isLoading: profileLoading } = useProfile();
-  const { canMenu } = useAdminAccess();
+  const { data: access, canMenu } = useAdminAccess();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const role = profile?.role || localStorage.getItem('sindicato_user_role');
@@ -157,11 +157,11 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose, isCollapsed }) => {
               <NavSection title={isCollapsed ? "" : "Administração"} items={adminItems.filter((item) => canMenu(item.permission))} />
             )}
 
-            {(role === 'administrador' || role === 'empresa') && (
+            {(role === 'empresa' || (role === 'administrador' && access?.isSuperadmin)) && (
               <NavSection title={isCollapsed ? "" : "Portal Empresa"} items={companyItems} />
             )}
 
-            {(role === 'administrador' || role === 'funcionario') && (
+            {(role === 'funcionario' || (role === 'administrador' && access?.isSuperadmin)) && (
               <NavSection title={isCollapsed ? "" : "Portal do Funcionário"} items={employeeItems} colorClass="text-blue-400" />
             )}
 
