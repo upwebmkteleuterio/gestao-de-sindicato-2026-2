@@ -8,22 +8,21 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Eye, EyeOff, Loader2, Pencil, Plus, ShieldCheck, Trash2, Users } from "lucide-react";
-
 import { toast } from "sonner";
 
 const ADMIN_MENUS = [
-  { key: "dashboard", label: "Dashboard" },
-  { key: "aprovacoes", label: "Aprovações" },
-
-  { key: "empresas", label: "Empresas" },
-  { key: "importar", label: "Importar empresas" },
-  { key: "agenda", label: "Agenda" },
-  { key: "juridico", label: "Jurídico" },
-  { key: "financeiro", label: "Financeiro" },
-  { key: "emails", label: "E-mails e templates" },
-  { key: "configuracoes", label: "Configurações" },
+  { key: "dashboard", label: "Dashboard", icon: "grid_view" },
+  { key: "aprovacoes", label: "Aprovações", icon: "check_circle" },
+  { key: "empresas", label: "Empresas", icon: "domain" },
+  { key: "importar", label: "Importar empresas", icon: "file_upload" },
+  { key: "agenda", label: "Agenda", icon: "calendar_month" },
+  { key: "juridico", label: "Jurídico", icon: "gavel" },
+  { key: "financeiro", label: "Financeiro", icon: "payments" },
+  { key: "emails", label: "E-mails e templates", icon: "mail" },
+  { key: "configuracoes", label: "Configurações", icon: "settings" },
 ];
 
 type AdminRole = { id: string; name: string; allowed_menus: string[] };
@@ -46,6 +45,8 @@ const Team = () => {
   const [editingRole, setEditingRole] = useState<AdminRole | null>(null);
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState("team");
+  const [memberRoleFilter, setMemberRoleFilter] = useState("all");
+  const [memberToDelete, setMemberToDelete] = useState<TeamMember | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [memberForm, setMemberForm] = useState({ first_name: "", last_name: "", email: "", password: "", admin_role_id: "" });
 
@@ -73,8 +74,17 @@ const Team = () => {
   useEffect(() => { loadData(); }, []);
 
   const roleUsers = useMemo(() => new Map(roles.map((role) => [role.id, members.filter((member) => member.admin_role_id === role.id).length])), [roles, members]);
+  const filteredMembers = useMemo(
+    () => memberRoleFilter === "all"
+      ? members
+      : memberRoleFilter === "administrator"
+        ? members.filter((member) => !member.admin_role_id)
+        : members.filter((member) => member.admin_role_id === memberRoleFilter),
+    [memberRoleFilter, members],
+  );
 
   const openNewMember = () => {
+
     setEditingMember(null);
     setMemberForm({ first_name: "", last_name: "", email: "", password: "", admin_role_id: roles[0]?.id ?? "" });
     setShowPassword(false);
@@ -116,17 +126,18 @@ const Team = () => {
       await callTeamFunction({ action: "toggle", user_id: member.id, active });
       const { error } = await supabase.from("profiles").update({ active }).eq("id", member.id);
       if (error) throw error;
-      toast.success(active ? "Acesso reativado." : "Acesso desativado.");
+      toast.success(active ? `O usuário ${member.first_name} foi reativado e já pode acessar o sistema.` : `O usuário ${member.first_name} foi desativado e não poderá mais fazer login.`);
       await loadData();
 
     } catch (error) { toast.error(error instanceof Error ? error.message : "Erro ao atualizar acesso."); }
   };
 
-  const deleteMember = async (member: TeamMember) => {
-    if (!window.confirm(`Excluir o acesso de ${member.first_name}?`)) return;
+  const deleteMember = async () => {
+    if (!memberToDelete) return;
     try {
-      await callTeamFunction({ action: "delete", user_id: member.id });
-      toast.success("Membro excluído.");
+      await callTeamFunction({ action: "delete", user_id: memberToDelete.id });
+      toast.success(`O usuário ${memberToDelete.first_name} foi excluído definitivamente.`);
+      setMemberToDelete(null);
       await loadData();
     } catch (error) { toast.error(error instanceof Error ? error.message : "Erro ao excluir membro."); }
   };
@@ -175,16 +186,26 @@ const Team = () => {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="bg-white border border-slate-200 p-1 rounded-xl">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <TabsList className="bg-white border border-slate-200 p-1 rounded-xl">
+              <TabsTrigger value="team" className="rounded-lg px-5"><Users size={16} className="mr-2" /> Equipe</TabsTrigger>
+              <TabsTrigger value="roles" className="rounded-lg px-5"><ShieldCheck size={16} className="mr-2" /> Cargos</TabsTrigger>
+            </TabsList>
+            {activeTab === "team" && (
+              <select value={memberRoleFilter} onChange={(event) => setMemberRoleFilter(event.target.value)} className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 shadow-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20">
+                <option value="all">Todos os cargos</option>
+                <option value="administrator">Administrador</option>
+                {roles.map((role) => <option key={role.id} value={role.id}>{role.name}</option>)}
 
-            <TabsTrigger value="team" className="rounded-lg px-5"><Users size={16} className="mr-2" /> Equipe</TabsTrigger>
-            <TabsTrigger value="roles" className="rounded-lg px-5"><ShieldCheck size={16} className="mr-2" /> Cargos</TabsTrigger>
-          </TabsList>
+              </select>
+            )}
+          </div>
 
           <TabsContent value="team" className="mt-0">
             <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-              <div className="border-b border-slate-100 bg-slate-50/60 px-6 py-5"><h2 className="font-bold text-slate-900">Usuários da administração</h2><p className="text-sm text-slate-500">{members.length} membro(s) cadastrado(s)</p></div>
-              {loading ? <div className="flex justify-center p-12"><Loader2 className="animate-spin text-blue-600" /></div> : <div className="overflow-x-auto"><table className="w-full text-left"><thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500"><tr><th className="px-6 py-4">Nome</th><th className="px-6 py-4">Cargo</th><th className="px-6 py-4">Cadastro</th><th className="px-6 py-4">Ativo</th><th className="px-6 py-4 text-right">Ações</th></tr></thead><tbody className="divide-y divide-slate-100">{members.map((member) => <tr key={member.id} className="hover:bg-slate-50/70"><td className="px-6 py-4"><p className="font-bold text-slate-900">{member.first_name} {member.last_name}</p><p className="text-sm text-slate-500">{member.email}</p></td><td className="px-6 py-4"><Badge variant="secondary">{roles.find((role) => role.id === member.admin_role_id)?.name ?? "Sem cargo"}</Badge></td><td className="px-6 py-4 text-sm text-slate-500">{new Date(member.created_at).toLocaleDateString("pt-BR")}</td><td className="px-6 py-4"><div className="flex items-center gap-3"><Switch checked={member.active} onCheckedChange={(checked) => toggleMember(member, checked)} /><span className={member.active ? "text-emerald-600" : "text-slate-400"}>{member.active ? "Ativo" : "Inativo"}</span></div></td><td className="px-6 py-4"><div className="flex justify-end gap-2"><Button variant="outline" size="icon" onClick={() => openEditMember(member)}><Pencil size={16} /></Button><Button variant="outline" size="icon" className="text-red-600 hover:text-red-700" onClick={() => deleteMember(member)}><Trash2 size={16} /></Button></div></td></tr>)}</tbody></table></div>}
+              <div className="border-b border-slate-100 bg-slate-50/60 px-6 py-5"><h2 className="font-bold text-slate-900">Usuários da administração</h2><p className="text-sm text-slate-500">{filteredMembers.length} membro(s) exibido(s)</p></div>
+              {loading ? <div className="flex justify-center p-12"><Loader2 className="animate-spin text-blue-600" /></div> : <div className="overflow-x-auto"><table className="w-full text-left"><thead className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500"><tr><th className="px-6 py-4">Nome</th><th className="px-6 py-4">Cargo</th><th className="px-6 py-4">Cadastro</th><th className="px-6 py-4">Ativo</th><th className="px-6 py-4 text-right">Ações</th></tr></thead><tbody className="divide-y divide-slate-100">{filteredMembers.map((member) => <tr key={member.id} className="hover:bg-slate-50/70"><td className="px-6 py-4"><p className="font-bold text-slate-900">{member.first_name} {member.last_name}</p><p className="text-sm text-slate-500">{member.email}</p></td><td className="px-6 py-4"><Badge variant="secondary">{member.admin_role_id ? roles.find((role) => role.id === member.admin_role_id)?.name ?? "Sem cargo" : "Administrador"}</Badge></td><td className="px-6 py-4 text-sm text-slate-500">{new Date(member.created_at).toLocaleDateString("pt-BR")}</td><td className="px-6 py-4"><div className="flex items-center gap-3"><Switch checked={member.active} onCheckedChange={(checked) => toggleMember(member, checked)} /><span className={member.active ? "text-emerald-600" : "text-slate-400"}>{member.active ? "Ativo" : "Inativo"}</span></div></td><td className="px-6 py-4"><div className="flex justify-end gap-2"><Button variant="outline" size="icon" onClick={() => openEditMember(member)}><Pencil size={16} /></Button><Button variant="outline" size="icon" className="text-red-600 hover:text-red-700" onClick={() => setMemberToDelete(member)}><Trash2 size={16} /></Button></div></td></tr>)}</tbody></table></div>}
+
             </div>
           </TabsContent>
 
@@ -197,8 +218,11 @@ const Team = () => {
 
       <Dialog open={memberDialog} onOpenChange={setMemberDialog}><DialogContent><DialogHeader><DialogTitle>{editingMember ? "Editar membro" : "Cadastrar membro da equipe"}</DialogTitle></DialogHeader><form onSubmit={saveMember} className="space-y-4"><div className="grid grid-cols-2 gap-4"><div><Label>Nome</Label><Input value={memberForm.first_name} onChange={(e) => setMemberForm({ ...memberForm, first_name: e.target.value })} /></div><div><Label>Sobrenome</Label><Input value={memberForm.last_name} onChange={(e) => setMemberForm({ ...memberForm, last_name: e.target.value })} /></div></div><div><Label>E-mail</Label><Input type="email" value={memberForm.email} onChange={(e) => setMemberForm({ ...memberForm, email: e.target.value })} /></div><div><Label>{editingMember ? "Nova senha (opcional)" : "Senha"}</Label><div className="relative mt-2"><Input type={showPassword ? "text" : "password"} className="pr-10" value={memberForm.password} onChange={(e) => setMemberForm({ ...memberForm, password: e.target.value })} /><button type="button" aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"} onClick={() => setShowPassword((current) => !current)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700">{showPassword ? <EyeOff size={17} /> : <Eye size={17} />}</button></div></div><div><Label>Cargo</Label><select className="mt-2 flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm" value={memberForm.admin_role_id} onChange={(e) => setMemberForm({ ...memberForm, admin_role_id: e.target.value })}><option value="">Selecione um cargo</option>{roles.map((role) => <option key={role.id} value={role.id}>{role.name}</option>)}</select></div><DialogFooter><Button type="button" variant="outline" onClick={() => setMemberDialog(false)}>Cancelar</Button><Button type="submit" disabled={saving}>{saving && <Loader2 size={16} className="mr-2 animate-spin" />}Salvar</Button></DialogFooter></form></DialogContent></Dialog>
 
-      <Dialog open={roleDialog} onOpenChange={setRoleDialog}><DialogContent><DialogHeader><DialogTitle>{editingRole ? "Editar cargo" : "Cadastrar cargo"}</DialogTitle></DialogHeader><form onSubmit={saveRole} className="space-y-5"><div><Label>Nome do cargo</Label><Input value={roleForm.name} onChange={(e) => setRoleForm({ ...roleForm, name: e.target.value })} placeholder="Ex.: Assistente" /></div><div><Label>Menus da administração</Label><div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">{ADMIN_MENUS.map((menu) => <label key={menu.key} className="flex items-center gap-3 rounded-lg border border-slate-200 p-3 text-sm"><input type="checkbox" checked={roleForm.allowed_menus.includes(menu.key)} onChange={(e) => setRoleForm({ ...roleForm, allowed_menus: e.target.checked ? [...roleForm.allowed_menus, menu.key] : roleForm.allowed_menus.filter((item) => item !== menu.key) })} />{menu.label}</label>)}</div></div><DialogFooter><Button type="button" variant="outline" onClick={() => setRoleDialog(false)}>Cancelar</Button><Button type="submit" disabled={saving}>{saving && <Loader2 size={16} className="mr-2 animate-spin" />}Salvar cargo</Button></DialogFooter></form></DialogContent></Dialog>
+      <Dialog open={roleDialog} onOpenChange={setRoleDialog}><DialogContent><DialogHeader><DialogTitle>{editingRole ? "Editar cargo" : "Cadastrar cargo"}</DialogTitle></DialogHeader><form onSubmit={saveRole} className="space-y-5"><div><Label>Nome do cargo</Label><Input value={roleForm.name} onChange={(e) => setRoleForm({ ...roleForm, name: e.target.value })} placeholder="Ex.: Assistente" /></div><div><Label>Menus da administração</Label><div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">{ADMIN_MENUS.map((menu) => <label key={menu.key} className="flex items-center gap-3 rounded-lg border border-slate-200 p-3 text-sm"><input type="checkbox" checked={roleForm.allowed_menus.includes(menu.key)} onChange={(e) => setRoleForm({ ...roleForm, allowed_menus: e.target.checked ? [...roleForm.allowed_menus, menu.key] : roleForm.allowed_menus.filter((item) => item !== menu.key) })} /><span className="material-symbols-outlined text-[19px] text-slate-500">{menu.icon}</span><span>{menu.label}</span></label>)}</div></div><DialogFooter><Button type="button" variant="outline" onClick={() => setRoleDialog(false)}>Cancelar</Button><Button type="submit" disabled={saving}>{saving && <Loader2 size={16} className="mr-2 animate-spin" />}Salvar cargo</Button></DialogFooter></form></DialogContent></Dialog>
+
+      <AlertDialog open={!!memberToDelete} onOpenChange={(open) => !open && setMemberToDelete(null)}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Excluir usuário da equipe?</AlertDialogTitle><AlertDialogDescription>Essa ação excluirá definitivamente o acesso de <strong>{memberToDelete?.first_name} {memberToDelete?.last_name}</strong>. O usuário não poderá mais entrar no sistema e o acesso não poderá ser recuperado automaticamente.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancelar</AlertDialogCancel><AlertDialogAction onClick={deleteMember} className="bg-red-600 hover:bg-red-700">Excluir definitivamente</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
     </div>
+
   );
 };
 
