@@ -29,6 +29,8 @@ import ResetPassword from "./pages/auth/ResetPassword";
 import LegalScheduling from "./pages/employee/LegalScheduling";
 import Jurisdictions from "./pages/employee/Jurisdictions";
 import NotFound from "./pages/NotFound";
+import Team from "./pages/admin/Team";
+import { useAdminAccess } from "./hooks/useAdminAccess";
 import { useEffect } from "react";
 
 const ScrollToTop = () => {
@@ -123,7 +125,28 @@ const PublicRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
+const AdminMenuRoute = ({ menu, children }: { menu: string; children: React.ReactNode }) => {
+  const { data: access, isLoading } = useAdminAccess();
+  if (isLoading) return <GlobalLoader message="Verificando permissões..." />;
+  if (!access?.isAdmin) return <Navigate to="/login" replace />;
+  if (access.isSuperadmin || access.allowedMenus.includes(menu)) return <>{children}</>;
+
+  const firstAllowedRoute = [
+    ["dashboard", "/admin"],
+    ["aprovacoes", "/admin/aprovacoes"],
+    ["empresas", "/admin/empresas"],
+    ["importar", "/admin/importar"],
+    ["agenda", "/admin/agenda"],
+    ["juridico", "/admin/juridico"],
+    ["emails", "/admin/emails"],
+    ["configuracoes", "/configuracoes"],
+  ].find(([key]) => access.allowedMenus.includes(key));
+
+  return <Navigate to={firstAllowedRoute?.[1] ?? "/login"} replace />;
+};
+
 const App = () => (
+
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <SessionContextProvider>
@@ -140,17 +163,18 @@ const App = () => (
             
             <Route element={<AuthenticatedLayout allowedRoles={['administrador']} />}>
               <Route path="/admin">
-                <Route index element={<AdminDashboard />} />
-                <Route path="aprovacoes" element={<Approvals />} />
-                <Route path="empresas" element={<Companies />} />
-                <Route path="importar" element={<ImportCompanies />} />
-                <Route path="financeiro" element={<FinancialLegal />} />
-                <Route path="agenda" element={<Agenda />} />
-                <Route path="juridico" element={<Juridico />} />
-                <Route path="email-teste" element={<EmailTest />} />
-                <Route path="emails" element={<EmailTemplates />} />
+                <Route index element={<AdminMenuRoute menu="dashboard"><AdminDashboard /></AdminMenuRoute>} />
+                <Route path="aprovacoes" element={<AdminMenuRoute menu="aprovacoes"><Approvals /></AdminMenuRoute>} />
+                <Route path="empresas" element={<AdminMenuRoute menu="empresas"><Companies /></AdminMenuRoute>} />
+                <Route path="importar" element={<AdminMenuRoute menu="importar"><ImportCompanies /></AdminMenuRoute>} />
+                <Route path="financeiro" element={<AdminMenuRoute menu="financeiro"><FinancialLegal /></AdminMenuRoute>} />
+                <Route path="agenda" element={<AdminMenuRoute menu="agenda"><Agenda /></AdminMenuRoute>} />
+                <Route path="juridico" element={<AdminMenuRoute menu="juridico"><Juridico /></AdminMenuRoute>} />
+                <Route path="email-teste" element={<AdminMenuRoute menu="emails"><EmailTest /></AdminMenuRoute>} />
+                <Route path="emails" element={<AdminMenuRoute menu="emails"><EmailTemplates /></AdminMenuRoute>} />
+                <Route path="equipe" element={<AdminMenuRoute menu="equipe"><Team /></AdminMenuRoute>} />
               </Route>
-              <Route path="/configuracoes" element={<Configuracoes />} />
+              <Route path="/configuracoes" element={<AdminMenuRoute menu="configuracoes"><Configuracoes /></AdminMenuRoute>} />
             </Route>
 
             <Route element={<AuthenticatedLayout allowedRoles={['empresa', 'administrador']} />}>

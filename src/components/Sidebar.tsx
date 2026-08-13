@@ -3,7 +3,9 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useSessionContext } from "@/contexts/SessionContext";
 import { useProfile } from "@/hooks/useProfile";
+import { useAdminAccess } from "@/hooks/useAdminAccess";
 import { LogOut, User as UserIcon } from "lucide-react";
+
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -19,6 +21,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose, isCollapsed }) => {
   const navigate = useNavigate();
   const { user, signOut } = useSessionContext();
   const { data: profile, isLoading: profileLoading } = useProfile();
+  const { canMenu } = useAdminAccess();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const role = profile?.role || localStorage.getItem('sindicato_user_role');
@@ -49,15 +52,15 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose, isCollapsed }) => {
   };
 
   const adminItems = [
-    { label: "Dashboard", icon: "grid_view", path: "/admin", fill: true },
-    { label: "Aprovações", icon: "check_circle", path: "/admin/aprovacoes" },
-    { label: "Empresas", icon: "domain", path: "/admin/empresas" },
-    { label: "Importar", icon: "file_upload", path: "/admin/importar" },
-    // { label: "Financeiro", icon: "payments", path: "/admin/financeiro" }, // Ocultado temporariamente
-    { label: "Agenda", icon: "calendar_month", path: "/admin/agenda" },
-    { label: "Jurídico", icon: "gavel", path: "/admin/juridico" },
-    { label: "Email e Templates", icon: "mail", path: "/admin/emails" },
-    { label: "Configurações", icon: "settings", path: "/configuracoes" },
+    { label: "Dashboard", icon: "grid_view", path: "/admin", permission: "dashboard", fill: true },
+    { label: "Aprovações", icon: "check_circle", path: "/admin/aprovacoes", permission: "aprovacoes" },
+    { label: "Empresas", icon: "domain", path: "/admin/empresas", permission: "empresas" },
+    { label: "Importar", icon: "file_upload", path: "/admin/importar", permission: "importar" },
+    { label: "Agenda", icon: "calendar_month", path: "/admin/agenda", permission: "agenda" },
+    { label: "Jurídico", icon: "gavel", path: "/admin/juridico", permission: "juridico" },
+    { label: "Email e Templates", icon: "mail", path: "/admin/emails", permission: "emails" },
+    { label: "Equipe e Acessos", icon: "group", path: "/admin/equipe", permission: "equipe" },
+    { label: "Configurações", icon: "settings", path: "/configuracoes", permission: "configuracoes" },
   ];
 
   const companyItems = [
@@ -151,7 +154,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose, isCollapsed }) => {
         ) : (
           <div className={cn("px-4 py-6", isCollapsed && "px-2")}>
             {role === 'administrador' && (
-              <NavSection title={isCollapsed ? "" : "Administração"} items={adminItems} />
+              <NavSection title={isCollapsed ? "" : "Administração"} items={adminItems.filter((item) => canMenu(item.permission))} />
             )}
 
             {(role === 'administrador' || role === 'empresa') && (
