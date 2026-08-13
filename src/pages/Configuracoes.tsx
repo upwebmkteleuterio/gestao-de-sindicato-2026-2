@@ -122,16 +122,6 @@ const Configuracoes = () => {
 
   return (
     <div className="flex flex-col h-full animate-in fade-in duration-500">
-      <header className="px-6 py-4 lg:px-10 border-b border-slate-200 bg-white sticky top-0 z-20">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-2 text-sm text-slate-500">
-            <span className="hover:text-blue-600 cursor-pointer">Início</span>
-            <span>/</span>
-            <span className="font-medium text-slate-900">Configurações do Sistema</span>
-          </div>
-        </div>
-      </header>
-
       <div className="flex-1 overflow-y-auto px-6 py-8 lg:px-10 bg-[#f8f9fc]">
         <div className="max-w-7xl mx-auto flex flex-col gap-8">
           <div>

@@ -174,7 +174,6 @@ const Team = () => {
       <div className="max-w-7xl mx-auto space-y-8">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <div className="flex items-center gap-2 text-blue-600 mb-2"><ShieldCheck size={20} /><span className="text-xs font-black uppercase tracking-widest">Administração</span></div>
             <h1 className="text-3xl font-bold tracking-tight text-slate-900">Equipe e acessos</h1>
             <p className="mt-1 text-slate-500">Cadastre a equipe administrativa e controle os menus disponíveis para cada cargo.</p>
           </div>
