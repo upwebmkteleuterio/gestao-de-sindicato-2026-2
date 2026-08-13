@@ -4,16 +4,15 @@ import React, { useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useFinancials } from "@/hooks/useFinancials";
-import { supabase } from "@/integrations/supabase/client";
-import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
-import { format, addDays, isBefore } from "date-fns";
+import { format } from "date-fns";
 import { 
-  Download, 
-  CheckCircle2, 
-  Clock, 
+  Download,
+  CheckCircle2,
+  Clock,
   CreditCard,
-  AlertTriangle
+  AlertTriangle,
+  Copy
 } from "lucide-react";
 import {
   Select,
@@ -36,28 +35,31 @@ const InvoicesTable: React.FC<InvoicesTableProps> = ({ explicitCompanyId }) => {
     setSelectedYear,
   } = useFinancials(explicitCompanyId);
 
-  // Busca carência para cálculo local
-  const { data: settings } = useQuery({
-    queryKey: ['financial-settings-local'],
-    queryFn: async () => {
-      const { data } = await supabase.from('financial_settings').select('grace_period_days').order('updated_at', { ascending: false }).limit(1).single();
-      return data;
-    }
-  });
 
   const handlePay = (inv: any) => {
-    toast.info(`Iniciando checkout da fatura ${inv.invoice_number}...`);
+    if (!inv.bank_slip_url) {
+      toast.error('O boleto ainda não está disponível.');
+      return;
+    }
+    window.open(inv.bank_slip_url, '_blank', 'noopener,noreferrer');
   };
 
-  const handleDownload = (id: string) => {
-    toast.success('Gerando PDF da fatura...');
+  const handleDownload = (inv: any) => {
+    if (!inv.bank_slip_url) {
+      toast.error('O boleto ainda não está disponível.');
+      return;
+    }
+    window.open(inv.bank_slip_url, '_blank', 'noopener,noreferrer');
+  };
+
+  const handleCopyCode = async (code: string) => {
+    await navigator.clipboard.writeText(code);
+    toast.success('Linha digitável copiada.');
   };
 
   if (isLoading) return <Skeleton className="h-96 w-full rounded-2xl" />;
 
   const currentYear = new Date().getFullYear().toString();
-  const graceDays = settings?.grace_period_days || 0;
-  const today = new Date();
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
@@ -96,10 +98,7 @@ const InvoicesTable: React.FC<InvoicesTableProps> = ({ explicitCompanyId }) => {
             {invoices.map((inv) => {
               const isPaid = inv.status === 'Pago';
               const isAdminPaid = isPaid && inv.payment_origin === 'admin';
-              
-              // Inteligência de Atraso
-              const limitDate = addDays(new Date(inv.due_date), graceDays);
-              const isAtrasado = !isPaid && isBefore(limitDate, today);
+              const isAtrasado = inv.display_status === 'Atrasado';
 
               return (
                 <tr key={inv.id} className="group hover:bg-slate-50 transition-colors">
@@ -124,11 +123,20 @@ const InvoicesTable: React.FC<InvoicesTableProps> = ({ explicitCompanyId }) => {
                        isAtrasado ? <AlertTriangle className="size-3" /> : 
                        <Clock className="size-3" />}
                       
-                      {isAdminPaid ? "Ajuste Administrativo" : (isAtrasado ? "Atrasado" : inv.status)}
+                      {isAdminPaid ? "Ajuste Administrativo" : (isAtrasado ? "Atrasado" : inv.display_status || inv.status)}
                     </span>
                   </td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-2">
+                      {inv.identification_field && !isPaid && (
+                        <button
+                          onClick={() => handleCopyCode(inv.identification_field)}
+                          className="text-slate-500 hover:text-blue-600 p-2 rounded-lg hover:bg-white transition-colors flex items-center gap-1 font-bold text-xs"
+                          title="Copiar linha digitável"
+                        >
+                          <Copy size={15} /> Código
+                        </button>
+                      )}
                       {!isPaid ? (
                         <button
                           onClick={() => handlePay(inv)}
@@ -142,7 +150,7 @@ const InvoicesTable: React.FC<InvoicesTableProps> = ({ explicitCompanyId }) => {
                         </button>
                       ) : (
                         <button
-                          onClick={() => handleDownload(inv.id)}
+                          onClick={() => handleDownload(inv)}
                           className="text-slate-400 hover:text-blue-600 p-2 rounded-lg hover:bg-white transition-colors flex items-center gap-2 font-bold text-xs"
                         >
                           <Download size={16} /> PDF

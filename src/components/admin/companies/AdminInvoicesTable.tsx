@@ -87,6 +87,7 @@ const AdminInvoicesTable: React.FC<AdminInvoicesTableProps> = ({ companyId }) =>
             <tbody className="divide-y divide-slate-50">
               {invoices.map((inv) => {
                 const isPaid = inv.status === 'Pago';
+                const isOverdue = inv.display_status === 'Atrasado';
                 const isAdminPaid = isPaid && inv.payment_origin === 'admin';
 
                 return (
@@ -104,10 +105,10 @@ const AdminInvoicesTable: React.FC<AdminInvoicesTableProps> = ({ companyId }) =>
                     <td className="px-6 py-4">
                       <span className={cn(
                         "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase border",
-                        isPaid ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-amber-50 text-amber-700 border-amber-200"
+                        isPaid ? "bg-emerald-50 text-emerald-700 border-emerald-200" : isOverdue ? "bg-red-50 text-red-700 border-red-200" : "bg-amber-50 text-amber-700 border-amber-200"
                       )}>
                         {isPaid ? <CheckCircle2 className="size-3" /> : <Clock className="size-3" />}
-                        {isAdminPaid ? "Pago - Administração" : inv.status}
+                        {isAdminPaid ? "Pago - Administração" : inv.display_status || inv.status}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-right">

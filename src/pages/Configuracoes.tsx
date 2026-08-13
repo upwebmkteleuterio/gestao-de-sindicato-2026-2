@@ -11,7 +11,11 @@ const Configuracoes = () => {
   const [settings, setSettings] = useState({
     associate_fee: 20,
     semiannual_fee: 50,
-    grace_period_days: 0
+    grace_period_days: 0,
+    due_day: 25,
+    semestral_month_1: 6,
+    semestral_month_2: 12,
+    generation_days_before: 5
   });
 
   useEffect(() => {
@@ -32,7 +36,11 @@ const Configuracoes = () => {
         setSettings({
           associate_fee: Number(data.associate_fee),
           semiannual_fee: Number(data.semiannual_fee),
-          grace_period_days: Number(data.grace_period_days || 0)
+          grace_period_days: Number(data.grace_period_days || 0),
+          due_day: Number(data.due_day || 25),
+          semestral_month_1: Number(data.semestral_month_1 || 6),
+          semestral_month_2: Number(data.semestral_month_2 || 12),
+          generation_days_before: Number(data.generation_days_before ?? 5)
         });
       }
     } catch (error) {
@@ -44,6 +52,19 @@ const Configuracoes = () => {
   };
 
   const handleSave = async () => {
+    if (settings.due_day < 1 || settings.due_day > 31) {
+      toast.error('O dia de vencimento deve estar entre 1 e 31.');
+      return;
+    }
+    if (settings.semestral_month_1 === settings.semestral_month_2) {
+      toast.error('Os meses semestrais precisam ser diferentes.');
+      return;
+    }
+    if (settings.generation_days_before < 0 || settings.grace_period_days < 0) {
+      toast.error('Antecedência e carência não podem ser negativas.');
+      return;
+    }
+
     setSaving(true);
     try {
       const { data: userData } = await supabase.auth.getUser();
@@ -54,6 +75,10 @@ const Configuracoes = () => {
           associate_fee: settings.associate_fee,
           semiannual_fee: settings.semiannual_fee,
           grace_period_days: settings.grace_period_days,
+          due_day: settings.due_day,
+          semestral_month_1: settings.semestral_month_1,
+          semestral_month_2: settings.semestral_month_2,
+          generation_days_before: settings.generation_days_before,
           updated_by: userData.user?.id
         });
 
@@ -137,7 +162,7 @@ const Configuracoes = () => {
                 </div>
 
                 <div className="flex flex-col gap-2.5">
-                  <label className="text-sm font-bold text-slate-700">Taxa Semestral</label>
+                  <label className="text-sm font-bold text-slate-700">Taxa Semestral Fixa</label>
                   <div className="relative">
                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-medium">R$</span>
                     <input
@@ -157,6 +182,7 @@ const Configuracoes = () => {
                   <div className="relative">
                     <input
                       type="number"
+                      min="0"
                       className="block w-full rounded-xl border-slate-200 bg-blue-50/30 py-3.5 px-4 text-blue-900 font-bold focus:ring-2 focus:ring-blue-600/10 transition-all border"
                       value={settings.grace_period_days}
                       onChange={(e) => setSettings({ ...settings, grace_period_days: Number(e.target.value) })}
@@ -165,6 +191,55 @@ const Configuracoes = () => {
                     <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-blue-400 uppercase tracking-widest">Dias</span>
                   </div>
                   <p className="text-[10px] text-slate-500 italic">Uma fatura só será considerada "Atrasada" após X dias do vencimento.</p>
+                </div>
+
+                <div className="flex flex-col gap-2.5">
+                  <label className="text-sm font-bold text-slate-700">Dia de Vencimento</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="31"
+                    className="block w-full rounded-xl border-slate-200 bg-slate-50 py-3.5 px-4 text-slate-900 font-bold focus:ring-2 focus:ring-blue-600/10 transition-all border"
+                    value={settings.due_day}
+                    onChange={(e) => setSettings({ ...settings, due_day: Number(e.target.value) })}
+                  />
+                  <p className="text-[10px] text-slate-500 italic">O boleto será gerado antes e vencerá neste dia.</p>
+                </div>
+
+                <div className="flex flex-col gap-2.5">
+                  <label className="text-sm font-bold text-slate-700">Gerar Boleto com Antecedência</label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      min="0"
+                      className="block w-full rounded-xl border-slate-200 bg-slate-50 py-3.5 px-4 text-slate-900 font-bold focus:ring-2 focus:ring-blue-600/10 transition-all border"
+                      value={settings.generation_days_before}
+                      onChange={(e) => setSettings({ ...settings, generation_days_before: Number(e.target.value) })}
+                    />
+                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400 uppercase tracking-widest">Dias</span>
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-2.5">
+                  <label className="text-sm font-bold text-slate-700">Mês Semestral 1</label>
+                  <select
+                    className="block w-full rounded-xl border-slate-200 bg-slate-50 py-3.5 px-4 text-slate-900 font-bold border"
+                    value={settings.semestral_month_1}
+                    onChange={(e) => setSettings({ ...settings, semestral_month_1: Number(e.target.value) })}
+                  >
+                    {['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'].map((month, index) => <option key={month} value={index + 1}>{month}</option>)}
+                  </select>
+                </div>
+
+                <div className="flex flex-col gap-2.5">
+                  <label className="text-sm font-bold text-slate-700">Mês Semestral 2</label>
+                  <select
+                    className="block w-full rounded-xl border-slate-200 bg-slate-50 py-3.5 px-4 text-slate-900 font-bold border"
+                    value={settings.semestral_month_2}
+                    onChange={(e) => setSettings({ ...settings, semestral_month_2: Number(e.target.value) })}
+                  >
+                    {['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'].map((month, index) => <option key={month} value={index + 1}>{month}</option>)}
+                  </select>
                 </div>
               </div>
             </div>

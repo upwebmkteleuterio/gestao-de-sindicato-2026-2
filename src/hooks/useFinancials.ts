@@ -33,8 +33,22 @@ export const useFinancials = (explicitCompanyId?: string) => {
     enabled: !!targetCompanyId
   });
 
+  const { data: gracePeriodDays = 0 } = useQuery({
+    queryKey: ['financial-settings-grace-period'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('financial_settings')
+        .select('grace_period_days')
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .single();
+      if (error) throw error;
+      return Number(data?.grace_period_days || 0);
+    }
+  });
+
   const { data: invoices = [], isLoading: isLoadingInvoices } = useQuery({
-    queryKey: ['invoices', targetCompanyId, selectedYear],
+    queryKey: ['invoices', targetCompanyId, selectedYear, gracePeriodDays],
     queryFn: async () => {
       if (!targetCompanyId) return [];
       
@@ -52,7 +66,12 @@ export const useFinancials = (explicitCompanyId?: string) => {
         .order('created_at', { ascending: false });
       
       if (error) throw error;
-      return data;
+      return data.map((invoice) => ({
+        ...invoice,
+        display_status: invoice.status === 'Pendente' && new Date() > new Date(new Date(invoice.due_date).getTime() + gracePeriodDays * 86400000)
+          ? 'Atrasado'
+          : invoice.status
+      }));
     },
     enabled: !!targetCompanyId
   });
@@ -80,8 +99,8 @@ export const useFinancials = (explicitCompanyId?: string) => {
   });
 
   const stats = {
-    pendingAmount: invoices?.filter(inv => inv.status === 'Pendente').reduce((acc, inv) => acc + Number(inv.amount), 0) || 0,
-    overdueAmount: invoices?.filter(inv => inv.status === 'Pendente' && new Date(inv.due_date) < new Date()).reduce((acc, inv) => acc + Number(inv.amount), 0) || 0,
+    pendingAmount: invoices?.filter(inv => inv.display_status === 'Pendente').reduce((acc, inv) => acc + Number(inv.amount), 0) || 0,
+    overdueAmount: invoices?.filter(inv => inv.display_status === 'Atrasado').reduce((acc, inv) => acc + Number(inv.amount), 0) || 0,
     // LOGICA DO DASHBOARD: Pega a fatura pendente mais recente (incluindo ajustes)
     activeInvoice: invoices?.find(inv => inv.status === 'Pendente') || invoices?.[0] || null,
   };

@@ -41,6 +41,11 @@ const ActiveInvoice = () => {
   const formattedDueDate = format(new Date(invoice.due_date), "dd 'de' MMMM, yyyy", { locale: ptBR });
   const amountFormatted = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(invoice.amount);
   const isAdjustment = invoice.billing_type === 'Ajuste de Saldo';
+  const isOverdue = invoice.display_status === 'Atrasado';
+  const handleOpenBoleto = () => {
+    if (!invoice.bank_slip_url) return;
+    window.open(invoice.bank_slip_url, '_blank', 'noopener,noreferrer');
+  };
 
   return (
     <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
@@ -55,12 +60,12 @@ const ActiveInvoice = () => {
           </p>
         </div>
         <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium border ${
-          invoice.status === 'Pago' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-amber-100 text-amber-700 border-amber-200'
+          invoice.status === 'Pago' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : isOverdue ? 'bg-red-100 text-red-700 border-red-200' : 'bg-amber-100 text-amber-700 border-amber-200'
         }`}>
           <span className="material-symbols-outlined text-[16px]">
-            {invoice.status === 'Pago' ? 'check_circle' : 'schedule'}
+            {invoice.status === 'Pago' ? 'check_circle' : isOverdue ? 'warning' : 'schedule'}
           </span>
-          {invoice.status === 'Pago' ? 'Pago' : 'Pendente'}
+          {invoice.status === 'Pago' ? 'Pago' : isOverdue ? 'Atrasado' : 'Pendente'}
         </div>
       </div>
       <div className="p-6 flex flex-col md:flex-row gap-6 items-center">
@@ -79,9 +84,13 @@ const ActiveInvoice = () => {
             </div>
           </div>
           <div className="flex flex-wrap gap-3">
-            <button className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg text-sm font-bold transition-colors flex items-center gap-2 shadow-sm">
+            <button
+              onClick={handleOpenBoleto}
+              disabled={!invoice.bank_slip_url}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg text-sm font-bold transition-colors flex items-center gap-2 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            >
               <CreditCard className="size-4" />
-              Pagar Agora
+              {invoice.bank_slip_url ? 'Visualizar Boleto' : 'Boleto indisponível'}
             </button>
             
             <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>

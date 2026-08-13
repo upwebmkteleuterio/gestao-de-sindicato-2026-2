@@ -92,9 +92,15 @@ const ManualDebtModal: React.FC<ManualDebtModalProps> = ({
 
     try {
       // 1. Create Invoice
-      await createInvoiceMutation.mutateAsync(invoiceData);
+      const createdInvoice = await createInvoiceMutation.mutateAsync(invoiceData);
+
+      // 2. Create the real Asaas boleto without changing the existing notification flow
+      const { error: boletoError } = await supabase.functions.invoke('create-asaas-boleto', {
+        body: { invoiceId: createdInvoice.id }
+      });
+      if (boletoError) throw boletoError;
       
-      // 2. Prepare and Send Email
+      // 3. Prepare and Send Email
       const recipients: string[] = [];
       if (loginEmailSelected && companyEmail) recipients.push(companyEmail);
       if (accountingEmailSelected && accountingEmail) recipients.push(accountingEmail);
