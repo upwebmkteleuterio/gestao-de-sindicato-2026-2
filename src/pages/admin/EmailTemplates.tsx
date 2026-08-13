@@ -503,8 +503,8 @@ const MassEmailPanel = () => {
             Monitoramento de Disparos
           </h3>
           
-          <Tabs value={activeQueueTab} onValueChange={(v) => setActiveQueueTab(v as any)} className="bg-slate-200/50 p-1 rounded-xl h-10">
-            <TabsList className="bg-transparent gap-1">
+          <Tabs value={activeQueueTab} onValueChange={(v) => setActiveQueueTab(v as any)} className="bg-slate-200/50 p-1 rounded-xl">
+            <TabsList className="h-8 bg-transparent gap-1 p-0">
               <TabsTrigger value="pending" className="rounded-lg px-4 h-8 text-[10px] font-black uppercase tracking-widest data-[state=active]:bg-white data-[state=active]:text-blue-600">
                 <Clock size={12} className="mr-1.5" />
                 Aguardando ({queueStats?.pending || 0})
