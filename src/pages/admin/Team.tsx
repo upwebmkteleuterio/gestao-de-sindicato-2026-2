@@ -9,7 +9,8 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Pencil, Plus, ShieldCheck, Trash2, Users } from "lucide-react";
+import { Eye, EyeOff, Loader2, Pencil, Plus, ShieldCheck, Trash2, Users } from "lucide-react";
+
 import { toast } from "sonner";
 
 const ADMIN_MENUS = [
@@ -44,15 +45,24 @@ const Team = () => {
   const [editingMember, setEditingMember] = useState<TeamMember | null>(null);
   const [editingRole, setEditingRole] = useState<AdminRole | null>(null);
   const [saving, setSaving] = useState(false);
+  const [activeTab, setActiveTab] = useState("team");
+  const [showPassword, setShowPassword] = useState(false);
   const [memberForm, setMemberForm] = useState({ first_name: "", last_name: "", email: "", password: "", admin_role_id: "" });
+
   const [roleForm, setRoleForm] = useState({ name: "", allowed_menus: [] as string[] });
 
   const loadData = async () => {
     setLoading(true);
     try {
-      const data = await callTeamFunction({ action: "list" });
-      setMembers(data.users ?? []);
-      setRoles(data.roles ?? []);
+      const [{ data: profileData, error: profileError }, { data: roleData, error: roleError }] = await Promise.all([
+        supabase.from("profiles").select("id, email, first_name, last_name, role, admin_role_id, active, created_at, updated_at").eq("role", "administrador").order("created_at", { ascending: false }),
+        
+        supabase.from("admin_roles").select("id, name, allowed_menus").order("name"),
+      ]);
+      if (profileError) throw profileError;
+      if (roleError) throw roleError;
+      setMembers((profileData ?? []).map((profile) => ({ ...profile, active: profile.active ?? true })) as TeamMember[]);
+      setRoles((roleData ?? []) as AdminRole[]);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Erro ao carregar equipe.");
     } finally {
@@ -67,13 +77,17 @@ const Team = () => {
   const openNewMember = () => {
     setEditingMember(null);
     setMemberForm({ first_name: "", last_name: "", email: "", password: "", admin_role_id: roles[0]?.id ?? "" });
+    setShowPassword(false);
     setMemberDialog(true);
+
   };
 
   const openEditMember = (member: TeamMember) => {
     setEditingMember(member);
     setMemberForm({ first_name: member.first_name ?? "", last_name: member.last_name ?? "", email: member.email ?? "", password: "", admin_role_id: member.admin_role_id ?? "" });
+    setShowPassword(false);
     setMemberDialog(true);
+
   };
 
   const saveMember = async (event: React.FormEvent) => {
@@ -84,8 +98,12 @@ const Team = () => {
     }
     setSaving(true);
     try {
-      await callTeamFunction({ action: editingMember ? "update" : "create", ...(editingMember ? { user_id: editingMember.id } : {}), ...memberForm, ...(editingMember && !memberForm.password ? { password: undefined } : {}) });
+      const result = await callTeamFunction({ action: editingMember ? "update" : "create", ...(editingMember ? { user_id: editingMember.id } : {}), ...memberForm, ...(editingMember && !memberForm.password ? { password: undefined } : {}) });
+      const profileId = editingMember?.id ?? result.userId;
+      const { error: profileError } = await supabase.from("profiles").update({ email: memberForm.email, active: true }).eq("id", profileId);
+      if (profileError) throw profileError;
       toast.success(editingMember ? "Membro atualizado." : "Membro cadastrado.");
+
       setMemberDialog(false);
       await loadData();
     } catch (error) {
@@ -96,8 +114,11 @@ const Team = () => {
   const toggleMember = async (member: TeamMember, active: boolean) => {
     try {
       await callTeamFunction({ action: "toggle", user_id: member.id, active });
+      const { error } = await supabase.from("profiles").update({ active }).eq("id", member.id);
+      if (error) throw error;
       toast.success(active ? "Acesso reativado." : "Acesso desativado.");
       await loadData();
+
     } catch (error) { toast.error(error instanceof Error ? error.message : "Erro ao atualizar acesso."); }
   };
 
@@ -146,11 +167,16 @@ const Team = () => {
             <h1 className="text-3xl font-bold tracking-tight text-slate-900">Equipe e acessos</h1>
             <p className="mt-1 text-slate-500">Cadastre a equipe administrativa e controle os menus disponíveis para cada cargo.</p>
           </div>
-          <Button onClick={openNewMember} className="bg-blue-600 hover:bg-blue-700"><Plus size={17} className="mr-2" /> Cadastrar novo</Button>
+          {activeTab === "team" ? (
+            <Button onClick={openNewMember} className="bg-blue-600 hover:bg-blue-700"><Plus size={17} className="mr-2" /> Novo membro</Button>
+          ) : (
+            <Button onClick={openNewRole} className="bg-blue-600 hover:bg-blue-700"><Plus size={17} className="mr-2" /> Novo cargo</Button>
+          )}
         </div>
 
-        <Tabs defaultValue="team" className="space-y-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="bg-white border border-slate-200 p-1 rounded-xl">
+
             <TabsTrigger value="team" className="rounded-lg px-5"><Users size={16} className="mr-2" /> Equipe</TabsTrigger>
             <TabsTrigger value="roles" className="rounded-lg px-5"><ShieldCheck size={16} className="mr-2" /> Cargos</TabsTrigger>
           </TabsList>
@@ -163,12 +189,13 @@ const Team = () => {
           </TabsContent>
 
           <TabsContent value="roles" className="mt-0">
-            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"><div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/60 px-6 py-5"><div><h2 className="font-bold text-slate-900">Cargos administrativos</h2><p className="text-sm text-slate-500">Defina quais menus cada cargo pode visualizar.</p></div><Button onClick={openNewRole} variant="outline"><Plus size={17} className="mr-2" /> Novo cargo</Button></div><div className="divide-y divide-slate-100">{loading ? <div className="flex justify-center p-12"><Loader2 className="animate-spin text-blue-600" /></div> : roles.map((role) => <div key={role.id} className="flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between"><div><div className="flex items-center gap-3"><h3 className="font-bold text-slate-900">{role.name}</h3><Badge variant="outline">{roleUsers.get(role.id) ?? 0} usuário(s)</Badge></div><div className="mt-2 flex flex-wrap gap-2">{role.allowed_menus.map((menu) => <Badge key={menu} variant="secondary">{ADMIN_MENUS.find((item) => item.key === menu)?.label ?? menu}</Badge>)}</div></div><div className="flex gap-2"><Button variant="outline" onClick={() => openEditRole(role)}><Pencil size={16} className="mr-2" /> Editar</Button><Button variant="outline" className="text-red-600 hover:text-red-700" onClick={() => deleteRole(role)}><Trash2 size={16} /></Button></div></div>)}</div></div>
+            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"><div className="border-b border-slate-100 bg-slate-50/60 px-6 py-5"><div><h2 className="font-bold text-slate-900">Cargos administrativos</h2><p className="text-sm text-slate-500">Defina quais menus cada cargo pode visualizar.</p></div></div><div className="divide-y divide-slate-100">{loading ? <div className="flex justify-center p-12"><Loader2 className="animate-spin text-blue-600" /></div> : roles.map((role) => <div key={role.id} className="flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between"><div><div className="flex items-center gap-3"><h3 className="font-bold text-slate-900">{role.name}</h3><Badge variant="outline">{roleUsers.get(role.id) ?? 0} usuário(s)</Badge></div><div className="mt-2 flex flex-wrap gap-2">{role.allowed_menus.map((menu) => <Badge key={menu} variant="secondary">{ADMIN_MENUS.find((item) => item.key === menu)?.label ?? menu}</Badge>)}</div></div><div className="flex gap-2"><Button variant="outline" onClick={() => openEditRole(role)}><Pencil size={16} className="mr-2" /> Editar</Button><Button variant="outline" className="text-red-600 hover:text-red-700" onClick={() => deleteRole(role)}><Trash2 size={16} /></Button></div></div>)}</div></div>
+
           </TabsContent>
         </Tabs>
       </div>
 
-      <Dialog open={memberDialog} onOpenChange={setMemberDialog}><DialogContent><DialogHeader><DialogTitle>{editingMember ? "Editar membro" : "Cadastrar membro da equipe"}</DialogTitle></DialogHeader><form onSubmit={saveMember} className="space-y-4"><div className="grid grid-cols-2 gap-4"><div><Label>Nome</Label><Input value={memberForm.first_name} onChange={(e) => setMemberForm({ ...memberForm, first_name: e.target.value })} /></div><div><Label>Sobrenome</Label><Input value={memberForm.last_name} onChange={(e) => setMemberForm({ ...memberForm, last_name: e.target.value })} /></div></div><div><Label>E-mail</Label><Input type="email" value={memberForm.email} onChange={(e) => setMemberForm({ ...memberForm, email: e.target.value })} /></div><div><Label>{editingMember ? "Nova senha (opcional)" : "Senha"}</Label><Input type="password" value={memberForm.password} onChange={(e) => setMemberForm({ ...memberForm, password: e.target.value })} /></div><div><Label>Cargo</Label><select className="mt-2 flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm" value={memberForm.admin_role_id} onChange={(e) => setMemberForm({ ...memberForm, admin_role_id: e.target.value })}><option value="">Selecione um cargo</option>{roles.map((role) => <option key={role.id} value={role.id}>{role.name}</option>)}</select></div><DialogFooter><Button type="button" variant="outline" onClick={() => setMemberDialog(false)}>Cancelar</Button><Button type="submit" disabled={saving}>{saving && <Loader2 size={16} className="mr-2 animate-spin" />}Salvar</Button></DialogFooter></form></DialogContent></Dialog>
+      <Dialog open={memberDialog} onOpenChange={setMemberDialog}><DialogContent><DialogHeader><DialogTitle>{editingMember ? "Editar membro" : "Cadastrar membro da equipe"}</DialogTitle></DialogHeader><form onSubmit={saveMember} className="space-y-4"><div className="grid grid-cols-2 gap-4"><div><Label>Nome</Label><Input value={memberForm.first_name} onChange={(e) => setMemberForm({ ...memberForm, first_name: e.target.value })} /></div><div><Label>Sobrenome</Label><Input value={memberForm.last_name} onChange={(e) => setMemberForm({ ...memberForm, last_name: e.target.value })} /></div></div><div><Label>E-mail</Label><Input type="email" value={memberForm.email} onChange={(e) => setMemberForm({ ...memberForm, email: e.target.value })} /></div><div><Label>{editingMember ? "Nova senha (opcional)" : "Senha"}</Label><div className="relative mt-2"><Input type={showPassword ? "text" : "password"} className="pr-10" value={memberForm.password} onChange={(e) => setMemberForm({ ...memberForm, password: e.target.value })} /><button type="button" aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"} onClick={() => setShowPassword((current) => !current)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700">{showPassword ? <EyeOff size={17} /> : <Eye size={17} />}</button></div></div><div><Label>Cargo</Label><select className="mt-2 flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm" value={memberForm.admin_role_id} onChange={(e) => setMemberForm({ ...memberForm, admin_role_id: e.target.value })}><option value="">Selecione um cargo</option>{roles.map((role) => <option key={role.id} value={role.id}>{role.name}</option>)}</select></div><DialogFooter><Button type="button" variant="outline" onClick={() => setMemberDialog(false)}>Cancelar</Button><Button type="submit" disabled={saving}>{saving && <Loader2 size={16} className="mr-2 animate-spin" />}Salvar</Button></DialogFooter></form></DialogContent></Dialog>
 
       <Dialog open={roleDialog} onOpenChange={setRoleDialog}><DialogContent><DialogHeader><DialogTitle>{editingRole ? "Editar cargo" : "Cadastrar cargo"}</DialogTitle></DialogHeader><form onSubmit={saveRole} className="space-y-5"><div><Label>Nome do cargo</Label><Input value={roleForm.name} onChange={(e) => setRoleForm({ ...roleForm, name: e.target.value })} placeholder="Ex.: Assistente" /></div><div><Label>Menus da administração</Label><div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">{ADMIN_MENUS.map((menu) => <label key={menu.key} className="flex items-center gap-3 rounded-lg border border-slate-200 p-3 text-sm"><input type="checkbox" checked={roleForm.allowed_menus.includes(menu.key)} onChange={(e) => setRoleForm({ ...roleForm, allowed_menus: e.target.checked ? [...roleForm.allowed_menus, menu.key] : roleForm.allowed_menus.filter((item) => item !== menu.key) })} />{menu.label}</label>)}</div></div><DialogFooter><Button type="button" variant="outline" onClick={() => setRoleDialog(false)}>Cancelar</Button><Button type="submit" disabled={saving}>{saving && <Loader2 size={16} className="mr-2 animate-spin" />}Salvar cargo</Button></DialogFooter></form></DialogContent></Dialog>
     </div>
