@@ -27,24 +27,26 @@ const RevenueChart: React.FC<{ currentMonth: boolean }> = ({ currentMonth }) => 
   const chartHeight = 300;
   const paddingBottom = 50;
   const chartAreaHeight = chartHeight - paddingBottom;
-  const columnWidth = chartWidth / monthlyData.length;
+  const columnWidth = chartWidth / Math.max(monthlyData.length, 1);
+  const getPointX = (index: number) => monthlyData.length === 1 ? chartWidth / 2 : (index / (monthlyData.length - 1)) * chartWidth;
 
   // 1. Calculate data points
   const receivedPoints = monthlyData.map((d, index) => ({
-    x: (index / (monthlyData.length - 1)) * chartWidth,
+    x: getPointX(index),
     y: chartAreaHeight - ((d.received / maxAmount) * chartAreaHeight),
     data: d,
   }));
 
   const pendingPoints = monthlyData.map((d, index) => ({
-    x: (index / (monthlyData.length - 1)) * chartWidth,
+    x: getPointX(index),
     y: chartAreaHeight - ((d.pending / maxAmount) * chartAreaHeight),
     data: d,
   }));
 
   // 2. Function to generate smooth curve path (Cubic Bézier approximation)
   const getCurvePath = (dataPoints: { x: number, y: number }[], isArea: boolean = false) => {
-    if (dataPoints.length < 2) return "";
+    if (dataPoints.length === 0) return "";
+    if (dataPoints.length === 1) return `M${dataPoints[0].x},${dataPoints[0].y} L${dataPoints[0].x},${dataPoints[0].y}`;
 
     let path = `M${dataPoints[0].x},${dataPoints[0].y}`;
 
@@ -73,7 +75,7 @@ const RevenueChart: React.FC<{ currentMonth: boolean }> = ({ currentMonth }) => 
   const receivedPath = getCurvePath(receivedPoints);
   const receivedAreaPath = getCurvePath(receivedPoints, true);
   const pendingPath = getCurvePath(pendingPoints);
-  const overduePoints = monthlyData.map((d, index) => ({ x: (index / (monthlyData.length - 1)) * chartWidth, y: chartAreaHeight - ((d.overdue / maxAmount) * chartAreaHeight), data: d }));
+  const overduePoints = monthlyData.map((d, index) => ({ x: getPointX(index), y: chartAreaHeight - ((d.overdue / maxAmount) * chartAreaHeight), data: d }));
   const overduePath = getCurvePath(overduePoints);
   
   const hoveredData = hoveredIndex !== null ? monthlyData[hoveredIndex] : null;
@@ -104,14 +106,14 @@ const RevenueChart: React.FC<{ currentMonth: boolean }> = ({ currentMonth }) => 
             <path 
               d={receivedPath} 
               fill="none" 
-              stroke="#3b82f6"
+              stroke="#10b981"
               strokeWidth="3"
               strokeLinejoin="round"
               strokeLinecap="round"
             ></path>
 
             {/* Pending Revenue Line (Red Dotted Smooth Curve) */}
-            <path d={overduePath} fill="none" stroke="#f97316" strokeDasharray="3,4" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round"></path>
+            <path d={overduePath} fill="none" stroke="#ef4444" strokeDasharray="3,4" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round"></path>
             <path 
               d={pendingPath} 
               fill="none" 
@@ -122,6 +124,12 @@ const RevenueChart: React.FC<{ currentMonth: boolean }> = ({ currentMonth }) => 
               strokeLinecap="round"
             ></path>
             
+            {monthlyData.length === 1 && <>
+              <circle cx={receivedPoints[0].x} cy={receivedPoints[0].y} r="5" fill="#10b981" stroke="white" strokeWidth="2" />
+              <circle cx={pendingPoints[0].x} cy={pendingPoints[0].y} r="5" fill="#f59e0b" stroke="white" strokeWidth="2" />
+              <circle cx={overduePoints[0].x} cy={overduePoints[0].y} r="5" fill="#ef4444" stroke="white" strokeWidth="2" />
+            </>}
+
             {/* Hover Points (Invisible hit areas for Tooltip) */}
             {receivedPoints.map((point, index) => (
                 <rect
@@ -143,7 +151,7 @@ const RevenueChart: React.FC<{ currentMonth: boolean }> = ({ currentMonth }) => 
                     cx={hoveredPoint.x}
                     cy={hoveredPoint.y}
                     r="6"
-                    fill="#3b82f6"
+                    fill="#10b981"
                     stroke="white"
                     strokeWidth="2"
                     style={{ pointerEvents: 'none' }}
@@ -152,7 +160,7 @@ const RevenueChart: React.FC<{ currentMonth: boolean }> = ({ currentMonth }) => 
 
             <defs>
               <linearGradient id="blueGradient" x1="0%" x2="0%" y1="0%" y2="100%">
-                <stop offset="0%" style={{ stopColor: "#3b82f6", stopOpacity: 1 }}></stop>
+                <stop offset="0%" style={{ stopColor: "#10b981", stopOpacity: 1 }}></stop>
                 <stop offset="100%" style={{ stopColor: "#3b82f6", stopOpacity: 0 }}></stop>
               </linearGradient>
             </defs>
@@ -175,7 +183,7 @@ const RevenueChart: React.FC<{ currentMonth: boolean }> = ({ currentMonth }) => 
                 <p className="text-xs font-bold border-b border-slate-700 pb-1 mb-1">Mês: {hoveredData.month}</p>
                 <div className="space-y-1">
                     <p className="text-sm font-medium text-blue-400">Recebido: {formatCurrency(hoveredData.received)}</p>
-                    <p className="text-sm font-medium text-amber-400">A receber: {formatCurrency(hoveredData.pending)}</p><p className="text-sm font-medium text-orange-400">Em atraso: {formatCurrency(hoveredData.overdue)}</p>
+                    <p className="text-sm font-medium text-amber-400">A receber: {formatCurrency(hoveredData.pending)}</p><p className="text-sm font-medium text-red-400">Em atraso: {formatCurrency(hoveredData.overdue)}</p>
                 </div>
             </div>
           )}
@@ -191,7 +199,7 @@ const RevenueChart: React.FC<{ currentMonth: boolean }> = ({ currentMonth }) => 
         {/* Legend */}
         <div className="flex items-center gap-6 mt-4 justify-center">
           <div className="flex items-center gap-2">
-            <span className="size-3 rounded-full bg-blue-600"></span>
+            <span className="size-3 rounded-full bg-emerald-500"></span>
             <span className="text-sm text-slate-600">Receita Recebida</span>
           </div>
           <div className="flex items-center gap-2">
@@ -199,7 +207,7 @@ const RevenueChart: React.FC<{ currentMonth: boolean }> = ({ currentMonth }) => 
             <span className="text-sm text-slate-600">A receber</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="size-3 rounded-full bg-orange-500"></span>
+            <span className="size-3 rounded-full bg-red-500"></span>
             <span className="text-sm text-slate-600">Em atraso</span>
           </div>
         </div>
