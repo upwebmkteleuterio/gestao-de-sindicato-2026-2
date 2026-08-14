@@ -102,6 +102,7 @@ const AccountingListTable = ({
 
 const Companies = () => {
   const location = useLocation();
+  const requestedCompanyId = new URLSearchParams(location.search).get("companyId");
   const lastSelectedId = useRef<string | null>(null);
   const lastSelectedAccountingId = useRef<string | null>(null);
 
@@ -131,16 +132,7 @@ const Companies = () => {
     accountingFilter, setAccountingFilter,
     accountingData, isLoadingAccounting,
     accountingToEdit, setAccountingToEdit,
-  } = useCompaniesManager();
-
-  useEffect(() => {
-    const companyId = (location.state as { companyId?: string } | null)?.companyId;
-    const company = companyId ? storedCompanies.find((item: any) => item.id === companyId) : null;
-    if (company) {
-      setSelectedCompany(company);
-      window.history.replaceState({}, document.title);
-    }
-  }, [location.state, storedCompanies, setSelectedCompany]);
+  } = useCompaniesManager(requestedCompanyId);
 
   // Scroll to top when page changes or accounting filter is applied
   useEffect(() => {

@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -17,7 +17,7 @@ const mapStatusToEnglish = (status: string): string => {
   return s;
 };
 
-export const useCompaniesManager = () => {
+export const useCompaniesManager = (requestedCompanyId?: string | null) => {
   const queryClient = useQueryClient();
   const { user } = useSessionContext();
   
@@ -212,9 +212,24 @@ export const useCompaniesManager = () => {
   const storedCompanies = data?.companies || [];
   const totalItems = data?.total || 0;
 
+  const { data: requestedCompany } = useQuery({
+    queryKey: ["admin-company-direct", requestedCompanyId],
+    queryFn: async () => {
+      if (!requestedCompanyId) return null;
+      const { data: company, error } = await supabase.from("companies").select("*").eq("id", requestedCompanyId).single();
+      if (error) throw error;
+      return company;
+    },
+    enabled: !!requestedCompanyId && !!user,
+  });
+
+  useEffect(() => {
+    if (requestedCompany?.id) setSelectedCompanyId(requestedCompany.id);
+  }, [requestedCompany?.id]);
+
   const selectedCompany = useMemo(() =>
-    storedCompanies.find(c => c.id === selectedCompanyId) || null,
-  [storedCompanies, selectedCompanyId]);
+    storedCompanies.find(c => c.id === selectedCompanyId) || (requestedCompany?.id === selectedCompanyId ? requestedCompany : null),
+  [storedCompanies, selectedCompanyId, requestedCompany]);
 
   const { data: currentCompanyEmployees = [] } = useQuery({
     queryKey: ["admin-company-employees", selectedCompanyId],
