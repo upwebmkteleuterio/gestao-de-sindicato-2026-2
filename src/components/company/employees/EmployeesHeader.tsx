@@ -2,6 +2,7 @@ import React from "react";
 import { toast } from "sonner";
 import { useAppStore } from "@/store/useAppStore";
 import { exportToCSV } from "@/utils/exportUtils";
+import ActionButton from "@/components/shared/ActionButton";
 
 interface EmployeesHeaderProps {
   onOpenNewEmployee: () => void;
@@ -45,13 +46,7 @@ const EmployeesHeader: React.FC<EmployeesHeaderProps> = ({ onOpenNewEmployee }) 
           <span className="material-symbols-outlined text-[20px]">download</span>
           Exportar
         </button>
-        <button 
-          onClick={onOpenNewEmployee}
-          className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-bold shadow-lg shadow-blue-500/20 hover:bg-blue-700 transition-all"
-        >
-          <span className="material-symbols-outlined text-[20px]">person_add</span>
-          Novo Funcionário
-        </button>
+        <ActionButton onClick={onOpenNewEmployee} icon={<span className="material-symbols-outlined text-[20px]">person_add</span>}>Novo Funcionário</ActionButton>
       </div>
     </div>
   );

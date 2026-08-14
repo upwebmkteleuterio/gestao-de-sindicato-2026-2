@@ -1,5 +1,6 @@
 import React from "react";
 import { cn } from "@/lib/utils";
+import ActionButton from "@/components/shared/ActionButton";
 
 interface AgendaHeaderProps {
   showKpis: boolean;
@@ -33,14 +34,7 @@ const AgendaHeader: React.FC<AgendaHeaderProps> = ({
               <span className="material-symbols-outlined text-[20px]">settings</span>
               Configurações
             </button>
-            <button 
-              id="agenda-new-slot-button"
-              onClick={onOpenNewSlot}
-              className="flex items-center gap-2 h-10 px-4 rounded-lg bg-blue-600 text-white text-sm font-bold shadow-lg shadow-blue-500/20 hover:bg-blue-700 transition-all active:scale-[0.98] relative"
-            >
-              <span className="material-symbols-outlined text-[20px]">add</span>
-              Criar Novos Horários
-            </button>
+            <ActionButton id="agenda-new-slot-button" onClick={onOpenNewSlot} icon={<span className="material-symbols-outlined text-[20px]">add</span>}>Criar Novos Horários</ActionButton>
           </div>
         </div>
 

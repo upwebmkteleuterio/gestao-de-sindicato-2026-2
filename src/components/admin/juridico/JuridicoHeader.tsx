@@ -1,5 +1,6 @@
 import React from "react";
 import { cn } from "@/lib/utils";
+import ActionButton from "@/components/shared/ActionButton";
 
 interface JuridicoHeaderProps {
   showKpis: boolean;
@@ -26,13 +27,7 @@ const JuridicoHeader: React.FC<JuridicoHeaderProps> = ({ showKpis, onToggleKpis,
               <span className="material-symbols-outlined text-[20px]">settings</span>
               Configurações
             </button>
-            <button 
-              onClick={onOpenNewSlot}
-              className="flex items-center gap-2 h-10 px-4 rounded-lg bg-indigo-600 text-white text-sm font-bold shadow-lg shadow-indigo-500/20 hover:bg-indigo-700 transition-all active:scale-[0.98]"
-            >
-              <span className="material-symbols-outlined text-[20px]">add</span>
-              Criar Novos Horários
-            </button>
+            <ActionButton onClick={onOpenNewSlot} icon={<span className="material-symbols-outlined text-[20px]">add</span>}>Criar Novos Horários</ActionButton>
           </div>
         </div>
 
