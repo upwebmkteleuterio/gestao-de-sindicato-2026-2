@@ -56,6 +56,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose, isCollapsed }) => {
     { label: "Aprovações", icon: "check_circle", path: "/admin/aprovacoes", permission: "aprovacoes" },
     { label: "Empresas", icon: "domain", path: "/admin/empresas", permission: "empresas" },
     { label: "Importar", icon: "file_upload", path: "/admin/importar", permission: "importar" },
+    { label: "Financeiro", icon: "payments", path: "/admin/financeiro", permission: "financeiro" },
     { label: "Agenda", icon: "calendar_month", path: "/admin/agenda", permission: "agenda" },
     { label: "Jurídico", icon: "gavel", path: "/admin/juridico", permission: "juridico" },
     { label: "Email e Templates", icon: "mail", path: "/admin/emails", permission: "emails" },

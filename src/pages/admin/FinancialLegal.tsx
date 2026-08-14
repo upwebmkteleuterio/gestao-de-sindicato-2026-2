@@ -9,8 +9,11 @@ import { supabase } from "@/integrations/supabase/client";
 import FinancialStats from "@/components/admin/financial/FinancialStats";
 import FinancialTable from "@/components/admin/financial/FinancialTable";
 import FinancialPagination from "@/components/admin/financial/FinancialPagination";
+import ManualTransactionModal from "@/components/admin/financial/ManualTransactionModal";
 import { useFinancialBalanceSettings, useFinancialTransactions } from "@/hooks/useFinancialTransactions";
+import type { FinancialTransaction } from "@/hooks/useFinancialTransactions";
 import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 const FinancialLegal = () => {
   const [showKpis, setShowKpis] = useState(false);
@@ -18,6 +21,8 @@ const FinancialLegal = () => {
   const [balanceValue, setBalanceValue] = useState("");
   const [balanceDate, setBalanceDate] = useState(new Date().toISOString().split("T")[0]);
   const [balanceDescription, setBalanceDescription] = useState("");
+  const [transactionDialogOpen, setTransactionDialogOpen] = useState(false);
+  const [selectedTransaction, setSelectedTransaction] = useState<FinancialTransaction | null>(null);
   const queryClient = useQueryClient();
   const { data: records = [], isLoading: transactionsLoading, error: transactionsError } = useFinancialTransactions();
   const { data: balanceSettings, isLoading: balanceLoading } = useFinancialBalanceSettings();
@@ -60,9 +65,21 @@ const FinancialLegal = () => {
     setBalanceDialogOpen(true);
   };
 
+  const deleteTransaction = async (record: FinancialTransaction) => {
+    if (!window.confirm(`Excluir o lançamento manual "${record.title}"?`)) return;
+    const { error } = await supabase.from("financial_transactions").delete().eq("id", record.id).eq("origin", "manual");
+    if (error) { toast.error("Não foi possível excluir o lançamento."); return; }
+    toast.success("Lançamento excluído.");
+    queryClient.invalidateQueries({ queryKey: ["financial-transactions"] });
+  };
+
+  const openNewTransaction = () => { setSelectedTransaction(null); setTransactionDialogOpen(true); };
+  const openEditTransaction = (record: FinancialTransaction) => { setSelectedTransaction(record); setTransactionDialogOpen(true); };
+
   return (
     <div className="flex flex-col h-full animate-in fade-in duration-500 relative">
-      <FinancialHeader showKpis={showKpis} onToggleKpis={() => setShowKpis(!showKpis)} onConfigureBalance={openBalanceDialog} />
+      <FinancialHeader showKpis={showKpis} onToggleKpis={() => setShowKpis(!showKpis)} onConfigureBalance={openBalanceDialog} onNewTransaction={openNewTransaction} />
+      <ManualTransactionModal open={transactionDialogOpen} onOpenChange={setTransactionDialogOpen} transaction={selectedTransaction} />
       <Dialog open={balanceDialogOpen} onOpenChange={setBalanceDialogOpen}>
         <DialogContent>
           <DialogHeader><DialogTitle>Configurar saldo inicial</DialogTitle></DialogHeader>
@@ -83,7 +100,7 @@ const FinancialLegal = () => {
           ) : transactionsError ? (
             <div className="py-20 text-center bg-white rounded-2xl border border-red-200 text-red-600">Erro ao carregar os lançamentos financeiros.</div>
           ) : records.length > 0 ? (
-            <><FinancialTable records={records} /><FinancialPagination currentRange={`1-${records.length}`} totalCount={records.length} /></>
+            <><FinancialTable records={records} onEdit={openEditTransaction} onDelete={deleteTransaction} /><FinancialPagination currentRange={`1-${records.length}`} totalCount={records.length} /></>
           ) : (
             <div className="flex flex-col items-center justify-center py-20 bg-white rounded-2xl border border-dashed border-slate-300">
               <span className="material-symbols-outlined text-slate-300 text-6xl mb-4">payments</span>

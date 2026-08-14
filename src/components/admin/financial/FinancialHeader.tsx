@@ -4,9 +4,10 @@ interface FinancialHeaderProps {
   onToggleKpis: () => void;
   showKpis: boolean;
   onConfigureBalance: () => void;
+  onNewTransaction: () => void;
 }
 
-const FinancialHeader: React.FC<FinancialHeaderProps> = ({ onToggleKpis, showKpis, onConfigureBalance }) => {
+const FinancialHeader: React.FC<FinancialHeaderProps> = ({ onToggleKpis, showKpis, onConfigureBalance, onNewTransaction }) => {
   return (
     <header className="px-6 py-4 border-b border-slate-200 bg-white sticky top-0 z-30">
       <div className="max-w-7xl mx-auto flex flex-col gap-4">
@@ -37,6 +38,10 @@ const FinancialHeader: React.FC<FinancialHeaderProps> = ({ onToggleKpis, showKpi
               <button className="px-3 py-1.5 text-xs font-bold text-slate-500 hover:text-slate-700 transition-all">30-60d</button>
               <button className="px-3 py-1.5 text-xs font-bold text-slate-500 hover:text-slate-700 transition-all">90d+</button>
             </div>
+            <button onClick={onNewTransaction} className="flex items-center gap-2 h-9 px-3 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700 transition-all shadow-sm">
+              <span className="material-symbols-outlined text-lg">add</span>
+              Novo lançamento
+            </button>
             <button onClick={onConfigureBalance} className="flex items-center gap-2 h-9 px-3 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-bold hover:bg-slate-50 transition-all shadow-sm">
               <span className="material-symbols-outlined text-lg">account_balance</span>
               Saldo inicial
