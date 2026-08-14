@@ -1,6 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
+export type FinancialCategory = { id: string; name: string; kind: "entrada" | "saida" | "ambos"; active: boolean };
+
 export type FinancialTransaction = {
   id: string;
   type: "entrada" | "saida";

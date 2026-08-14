@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import jsPDF from "jspdf";
 import FinancialHeader from "@/components/admin/financial/FinancialHeader";
+import CategoryManager from "@/components/admin/financial/CategoryManager";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,97 +16,22 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { formatCurrencyInput, parseCurrencyInput, currencyInputFromNumber } from "@/utils/currencyInput";
 
 const formatCurrency = (value: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
 const isoDate = (date: Date) => date.toISOString().split("T")[0];
 
 const FinancialLegal = () => {
-  const [showKpis, setShowKpis] = useState(false);
-  const [search, setSearch] = useState("");
-  const [period, setPeriod] = useState("current");
-  const [typeFilter, setTypeFilter] = useState("all");
-  const [originFilter, setOriginFilter] = useState("all");
-  const [categoryFilter, setCategoryFilter] = useState("all");
-  const [balanceDialogOpen, setBalanceDialogOpen] = useState(false);
-  const [balanceValue, setBalanceValue] = useState("");
-  const [balanceDate, setBalanceDate] = useState(isoDate(new Date()));
-  const [balanceDescription, setBalanceDescription] = useState("");
-  const [transactionDialogOpen, setTransactionDialogOpen] = useState(false);
-  const [selectedTransaction, setSelectedTransaction] = useState<FinancialTransaction | null>(null);
-  const queryClient = useQueryClient();
-  const { data: records = [], isLoading: transactionsLoading, error: transactionsError } = useFinancialTransactions();
-  const { data: categories = [] } = useFinancialCategories();
-  const { data: balanceSettings, isLoading: balanceLoading } = useFinancialBalanceSettings();
-
-  const filteredRecords = useMemo(() => {
-    const today = new Date();
-    const currentMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-    const start = period === "current" ? currentMonth : period === "previous" ? new Date(today.getFullYear(), today.getMonth() - 1, 1) : period === "quarter" ? new Date(today.getFullYear(), today.getMonth() - 2, 1) : period === "year" ? new Date(today.getFullYear(), 0, 1) : null;
-    const end = period === "previous" ? new Date(today.getFullYear(), today.getMonth(), 1) : null;
-    const normalized = search.trim().toLowerCase();
-    return records.filter((record) => {
-      const matchesPeriod = !start || (record.transaction_date >= isoDate(start) && (!end || record.transaction_date < isoDate(end)));
-      const matchesType = typeFilter === "all" || record.type === typeFilter;
-      const matchesOrigin = originFilter === "all" || record.origin === originFilter;
-      const matchesCategory = categoryFilter === "all" || record.category?.id === categoryFilter;
-      const searchable = [record.title, record.description, record.company?.name, record.company?.cnpj].filter(Boolean).join(" ").toLowerCase();
-      return matchesPeriod && matchesType && matchesOrigin && matchesCategory && (!normalized || searchable.includes(normalized));
-    });
-  }, [records, search, period, typeFilter, originFilter, categoryFilter]);
-
-  const totals = useMemo(() => filteredRecords.reduce((result, record) => {
-    if (record.type === "entrada") result.income += Number(record.amount);
-    else result.expenses += Number(record.amount);
-    return result;
-  }, { income: 0, expenses: 0 }), [filteredRecords]);
-
+  const [search, setSearch] = useState(""); const [period, setPeriod] = useState("current"); const [typeFilter, setTypeFilter] = useState("all"); const [originFilter, setOriginFilter] = useState("all"); const [categoryFilter, setCategoryFilter] = useState("all"); const [balanceDialogOpen, setBalanceDialogOpen] = useState(false); const [balanceValue, setBalanceValue] = useState(""); const [balanceDate, setBalanceDate] = useState(isoDate(new Date())); const [balanceDescription, setBalanceDescription] = useState(""); const [transactionDialogOpen, setTransactionDialogOpen] = useState(false); const [selectedTransaction, setSelectedTransaction] = useState<FinancialTransaction | null>(null); const [showCategories, setShowCategories] = useState(false);
+  const queryClient = useQueryClient(); const { data: records = [], isLoading: transactionsLoading, error: transactionsError } = useFinancialTransactions(); const { data: categories = [] } = useFinancialCategories(); const { data: balanceSettings, isLoading: balanceLoading } = useFinancialBalanceSettings();
+  const filteredRecords = useMemo(() => { const today = new Date(); const currentMonth = new Date(today.getFullYear(), today.getMonth(), 1); const start = period === "current" ? currentMonth : period === "previous" ? new Date(today.getFullYear(), today.getMonth() - 1, 1) : period === "quarter" ? new Date(today.getFullYear(), today.getMonth() - 2, 1) : period === "year" ? new Date(today.getFullYear(), 0, 1) : null; const end = period === "previous" ? new Date(today.getFullYear(), today.getMonth(), 1) : null; const normalized = search.trim().toLowerCase(); return records.filter((record) => { const matchesPeriod = !start || (record.transaction_date >= isoDate(start) && (!end || record.transaction_date < isoDate(end))); const matchesType = typeFilter === "all" || record.type === typeFilter; const matchesOrigin = originFilter === "all" || record.origin === originFilter; const matchesCategory = categoryFilter === "all" || record.category?.id === categoryFilter; const searchable = [record.title, record.description, record.company?.name, record.company?.cnpj].filter(Boolean).join(" ").toLowerCase(); return matchesPeriod && matchesType && matchesOrigin && matchesCategory && (!normalized || searchable.includes(normalized)); }); }, [records, search, period, typeFilter, originFilter, categoryFilter]);
+  const totals = useMemo(() => filteredRecords.reduce((result, record) => { if (record.type === "entrada") result.income += Number(record.amount); else result.expenses += Number(record.amount); return result; }, { income: 0, expenses: 0 }), [filteredRecords]);
   const initialBalance = Number(balanceSettings?.initial_balance || 0);
-  const saveBalanceMutation = useMutation({
-    mutationFn: async () => {
-      const value = Number(balanceValue.replace(",", "."));
-      if (value < 0 || !balanceDate) throw new Error("Informe um saldo e uma data válidos.");
-      const user = await supabase.auth.getUser();
-      const payload = { initial_balance: value, reference_date: balanceDate, description: balanceDescription || null, updated_by: user.data.user?.id };
-      const result = balanceSettings?.id ? await supabase.from("financial_balance_settings").update(payload).eq("id", balanceSettings.id) : await supabase.from("financial_balance_settings").insert(payload);
-      if (result.error) throw result.error;
-    },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["financial-balance-settings"] }); setBalanceDialogOpen(false); toast.success("Saldo inicial salvo."); },
-    onError: (error: Error) => toast.error(error.message),
-  });
-
-  const deleteTransaction = async (record: FinancialTransaction) => {
-    if (!window.confirm(`Excluir o lançamento manual "${record.title}"?`)) return;
-    const { error } = await supabase.from("financial_transactions").delete().eq("id", record.id).eq("origin", "manual");
-    if (error) { toast.error("Não foi possível excluir o lançamento."); return; }
-    toast.success("Lançamento excluído.");
-    queryClient.invalidateQueries({ queryKey: ["financial-transactions"] });
-  };
-
-  const openBalanceDialog = () => { setBalanceValue(initialBalance.toFixed(2)); setBalanceDate(balanceSettings?.reference_date || isoDate(new Date())); setBalanceDescription(balanceSettings?.description || ""); setBalanceDialogOpen(true); };
-  const openNewTransaction = () => { setSelectedTransaction(null); setTransactionDialogOpen(true); };
-  const openEditTransaction = (record: FinancialTransaction) => { setSelectedTransaction(record); setTransactionDialogOpen(true); };
-
-  const generateReport = () => {
-    const pdf = new jsPDF();
-    const now = new Date().toLocaleString("pt-BR");
-    pdf.setFontSize(18); pdf.text("Relatório Financeiro", 14, 18);
-    pdf.setFontSize(10); pdf.text(`Gerado em: ${now}`, 14, 26); pdf.text(`Período: ${period === "all" ? "Todo o período" : period}`, 14, 32);
-    pdf.setFontSize(12); pdf.text(`Saldo inicial: ${formatCurrency(initialBalance)}`, 14, 44); pdf.text(`Entradas: ${formatCurrency(totals.income)}`, 14, 51); pdf.text(`Saídas: ${formatCurrency(totals.expenses)}`, 14, 58); pdf.text(`Resultado: ${formatCurrency(totals.income - totals.expenses)}`, 14, 65);
-    let y = 78; pdf.setFontSize(9); pdf.text("Data", 14, y); pdf.text("Lançamento", 38, y); pdf.text("Empresa", 92, y); pdf.text("Categoria", 145, y); pdf.text("Valor", 188, y); y += 6;
-    filteredRecords.forEach((record) => { if (y > 280) { pdf.addPage(); y = 18; } const company = record.company?.name || "-"; const category = record.category?.name || "-"; const title = record.title.length > 30 ? `${record.title.slice(0, 27)}...` : record.title; pdf.text(new Date(`${record.transaction_date}T12:00:00`).toLocaleDateString("pt-BR"), 14, y); pdf.text(title, 38, y); pdf.text(company.slice(0, 28), 92, y); pdf.text(category.slice(0, 22), 145, y); pdf.text(`${record.type === "entrada" ? "+" : "-"}${formatCurrency(Number(record.amount))}`, 188, y); y += 6; });
-    pdf.save(`relatorio-financeiro-${isoDate(new Date())}.pdf`);
-  };
-
+  const saveBalanceMutation = useMutation({ mutationFn: async () => { const value = parseCurrencyInput(balanceValue); if (value < 0 || !balanceDate) throw new Error("Informe um saldo e uma data válidos."); const user = await supabase.auth.getUser(); const payload = { initial_balance: value, reference_date: balanceDate, description: balanceDescription || null, updated_by: user.data.user?.id }; const result = balanceSettings?.id ? await supabase.from("financial_balance_settings").update(payload).eq("id", balanceSettings.id) : await supabase.from("financial_balance_settings").insert(payload); if (result.error) throw result.error; }, onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["financial-balance-settings"] }); setBalanceDialogOpen(false); toast.success("Saldo inicial salvo."); }, onError: (error: Error) => toast.error(error.message) });
+  const deleteTransaction = async (record: FinancialTransaction) => { if (!window.confirm(`Excluir o lançamento manual "${record.title}"?`)) return; const { error } = await supabase.from("financial_transactions").delete().eq("id", record.id).eq("origin", "manual"); if (error) { toast.error("Não foi possível excluir o lançamento."); return; } toast.success("Lançamento excluído."); queryClient.invalidateQueries({ queryKey: ["financial-transactions"] }); };
+  const openBalanceDialog = () => { setBalanceValue(currencyInputFromNumber(initialBalance)); setBalanceDate(balanceSettings?.reference_date || isoDate(new Date())); setBalanceDescription(balanceSettings?.description || ""); setBalanceDialogOpen(true); }; const openNewTransaction = () => { setSelectedTransaction(null); setTransactionDialogOpen(true); }; const openEditTransaction = (record: FinancialTransaction) => { setSelectedTransaction(record); setTransactionDialogOpen(true); };
+  const generateReport = () => { const pdf = new jsPDF(); pdf.setFontSize(18); pdf.text("Relatório Financeiro", 14, 18); pdf.setFontSize(10); pdf.text(`Gerado em: ${new Date().toLocaleString("pt-BR")}`, 14, 26); pdf.text(`Saldo inicial: ${formatCurrency(initialBalance)}`, 14, 44); pdf.text(`Entradas: ${formatCurrency(totals.income)}`, 14, 51); pdf.text(`Saídas: ${formatCurrency(totals.expenses)}`, 14, 58); let y = 72; pdf.setFontSize(9); pdf.text("Data", 14, y); pdf.text("Lançamento", 38, y); pdf.text("Categoria", 145, y); pdf.text("Valor", 188, y); y += 6; filteredRecords.forEach((record) => { if (y > 280) { pdf.addPage(); y = 18; } pdf.text(new Date(`${record.transaction_date}T12:00:00`).toLocaleDateString("pt-BR"), 14, y); pdf.text(record.title.slice(0, 30), 38, y); pdf.text((record.category?.name || "-").slice(0, 22), 145, y); pdf.text(`${record.type === "entrada" ? "+" : "-"}${formatCurrency(Number(record.amount))}`, 188, y); y += 6; }); pdf.save(`relatorio-financeiro-${isoDate(new Date())}.pdf`); };
   const isLoading = transactionsLoading || balanceLoading;
-  return <div className="flex flex-col h-full animate-in fade-in duration-500 relative">
-    <FinancialHeader showKpis={showKpis} onToggleKpis={() => setShowKpis(!showKpis)} onConfigureBalance={openBalanceDialog} onNewTransaction={openNewTransaction} onReport={generateReport} search={search} onSearchChange={setSearch} period={period} onPeriodChange={setPeriod} />
-    <ManualTransactionModal open={transactionDialogOpen} onOpenChange={setTransactionDialogOpen} transaction={selectedTransaction} />
-    <Dialog open={balanceDialogOpen} onOpenChange={setBalanceDialogOpen}><DialogContent><DialogHeader><DialogTitle>Configurar saldo inicial</DialogTitle></DialogHeader><div className="space-y-4 py-4"><div className="space-y-2"><Label>Valor do saldo</Label><Input type="number" min="0" step="0.01" value={balanceValue} onChange={(event) => setBalanceValue(event.target.value)} /></div><div className="space-y-2"><Label>Data de referência</Label><Input type="date" value={balanceDate} onChange={(event) => setBalanceDate(event.target.value)} /></div><div className="space-y-2"><Label>Descrição</Label><Input value={balanceDescription} onChange={(event) => setBalanceDescription(event.target.value)} /></div></div><DialogFooter><Button variant="outline" onClick={() => setBalanceDialogOpen(false)}>Cancelar</Button><Button onClick={() => saveBalanceMutation.mutate()} disabled={saveBalanceMutation.isPending}>Salvar saldo</Button></DialogFooter></DialogContent></Dialog>
-    <FinancialStats isVisible={showKpis} onToggle={() => setShowKpis(!showKpis)} initialBalance={initialBalance} income={totals.income} expenses={totals.expenses} currentBalance={initialBalance + totals.income - totals.expenses} />
-    <main className="flex-1 overflow-hidden p-6 bg-[#f8f9fc] flex flex-col"><div className="max-w-7xl mx-auto w-full flex-1 flex flex-col h-full">
-      <div className="bg-white border border-slate-200 rounded-xl p-4 mt-2 grid grid-cols-1 sm:grid-cols-3 gap-3"><select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="h-10 rounded-lg border border-slate-200 px-3 text-sm font-semibold"><option value="all">Todos os tipos</option><option value="entrada">Entradas</option><option value="saida">Saídas</option></select><select value={originFilter} onChange={(e) => setOriginFilter(e.target.value)} className="h-10 rounded-lg border border-slate-200 px-3 text-sm font-semibold"><option value="all">Todas as origens</option><option value="asaas">Asaas</option><option value="manual">Manual</option></select><select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} className="h-10 rounded-lg border border-slate-200 px-3 text-sm font-semibold"><option value="all">Todas as categorias</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></div>
-      {isLoading ? <div className="flex items-center justify-center py-20"><Loader2 className="size-8 animate-spin text-blue-600" /></div> : transactionsError ? <div className="py-20 text-center bg-white rounded-2xl border border-red-200 text-red-600">Erro ao carregar os lançamentos financeiros.</div> : filteredRecords.length > 0 ? <><FinancialTable records={filteredRecords} onEdit={openEditTransaction} onDelete={deleteTransaction} /><FinancialPagination currentRange={`1-${filteredRecords.length}`} totalCount={filteredRecords.length} /></> : <div className="flex flex-col items-center justify-center py-20 bg-white rounded-2xl border border-dashed border-slate-300"><span className="material-symbols-outlined text-slate-300 text-6xl mb-4">payments</span><p className="text-slate-500 font-medium">Nenhum lançamento encontrado para os filtros atuais.</p></div>}
-    </div></main>
-  </div>;
+  return <div className="flex flex-col h-full animate-in fade-in duration-500 relative"><FinancialHeader onCategories={() => { setShowCategories(true); setTimeout(() => document.getElementById("category-manager")?.scrollIntoView({ behavior: "smooth" }), 0); }} onConfigureBalance={openBalanceDialog} onNewTransaction={openNewTransaction} onReport={generateReport} search={search} onSearchChange={setSearch} period={period} onPeriodChange={setPeriod} /><ManualTransactionModal open={transactionDialogOpen} onOpenChange={setTransactionDialogOpen} transaction={selectedTransaction} /><Dialog open={balanceDialogOpen} onOpenChange={setBalanceDialogOpen}><DialogContent><DialogHeader><DialogTitle>Configurar saldo inicial</DialogTitle></DialogHeader><div className="space-y-4 py-4"><div className="space-y-2"><Label>Valor do saldo</Label><Input inputMode="numeric" value={balanceValue} onChange={(event) => setBalanceValue(formatCurrencyInput(event.target.value))} placeholder="R$ 0,00" /></div><div className="space-y-2"><Label>Data de referência</Label><Input type="date" value={balanceDate} onChange={(event) => setBalanceDate(event.target.value)} /></div><div className="space-y-2"><Label>Descrição</Label><Input value={balanceDescription} onChange={(event) => setBalanceDescription(event.target.value)} /></div></div><DialogFooter><Button variant="outline" onClick={() => setBalanceDialogOpen(false)}>Cancelar</Button><Button onClick={() => saveBalanceMutation.mutate()} disabled={saveBalanceMutation.isPending}>Salvar saldo</Button></DialogFooter></DialogContent></Dialog><FinancialStats isVisible initialBalance={initialBalance} income={totals.income} expenses={totals.expenses} currentBalance={initialBalance + totals.income - totals.expenses} /><main className="flex-1 overflow-auto p-6 bg-[#f8f9fc]"><div className="max-w-7xl mx-auto w-full"><div className="bg-white border border-slate-200 rounded-xl p-4 mt-2 grid grid-cols-1 sm:grid-cols-3 gap-3"><select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="h-10 rounded-lg border border-slate-200 px-3 text-sm font-semibold"><option value="all">Todos os tipos</option><option value="entrada">Entradas</option><option value="saida">Saídas</option></select><select value={originFilter} onChange={(e) => setOriginFilter(e.target.value)} className="h-10 rounded-lg border border-slate-200 px-3 text-sm font-semibold"><option value="all">Todas as origens</option><option value="asaas">Asaas</option><option value="manual">Manual</option></select><select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} className="h-10 rounded-lg border border-slate-200 px-3 text-sm font-semibold"><option value="all">Todas as categorias</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></div>{showCategories && <div id="category-manager"><CategoryManager categories={categories} /></div>}{isLoading ? <div className="flex items-center justify-center py-20"><Loader2 className="size-8 animate-spin text-blue-600" /></div> : transactionsError ? <div className="py-20 text-center bg-white rounded-2xl border border-red-200 text-red-600">Erro ao carregar os lançamentos financeiros.</div> : filteredRecords.length > 0 ? <><FinancialTable records={filteredRecords} onEdit={openEditTransaction} onDelete={deleteTransaction} /><FinancialPagination currentRange={`1-${filteredRecords.length}`} totalCount={filteredRecords.length} /></> : <div className="flex flex-col items-center justify-center py-20 bg-white rounded-2xl border border-dashed border-slate-300"><span className="material-symbols-outlined text-slate-300 text-6xl mb-4">payments</span><p className="text-slate-500 font-medium">Nenhum lançamento encontrado para os filtros atuais.</p><FinancialPagination currentRange="0" totalCount={0} /></div>}</div></main></div>;
 };
 export default FinancialLegal;
