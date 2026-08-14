@@ -5,8 +5,8 @@ import { Loader2 } from "lucide-react";
 import { formatCurrency } from "@/utils/formatters";
 import { cn } from "@/lib/utils";
 
-const RevenueChart = () => {
-  const { data, isLoading, error } = useAdminDashboardData();
+const RevenueChart: React.FC<{ currentMonth: boolean }> = ({ currentMonth }) => {
+  const { data, isLoading, error } = useAdminDashboardData(currentMonth);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
   if (isLoading) {

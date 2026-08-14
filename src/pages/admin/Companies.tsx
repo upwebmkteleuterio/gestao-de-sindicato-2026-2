@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import CompaniesHeader from "@/components/admin/companies/CompaniesHeader";
 import CompaniesListTable from "@/components/admin/companies/CompaniesListTable";
@@ -100,6 +101,7 @@ const AccountingListTable = ({
 };
 
 const Companies = () => {
+  const location = useLocation();
   const lastSelectedId = useRef<string | null>(null);
   const lastSelectedAccountingId = useRef<string | null>(null);
 
@@ -130,6 +132,15 @@ const Companies = () => {
     accountingData, isLoadingAccounting,
     accountingToEdit, setAccountingToEdit,
   } = useCompaniesManager();
+
+  useEffect(() => {
+    const companyId = (location.state as { companyId?: string } | null)?.companyId;
+    const company = companyId ? storedCompanies.find((item: any) => item.id === companyId) : null;
+    if (company) {
+      setSelectedCompany(company);
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state, storedCompanies, setSelectedCompany]);
 
   // Scroll to top when page changes or accounting filter is applied
   useEffect(() => {
