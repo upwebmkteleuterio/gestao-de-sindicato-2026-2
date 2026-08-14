@@ -2,14 +2,15 @@ import React from "react";
 import { cn } from "@/lib/utils";
 
 interface FinancialStatsProps {
-  isVisible?: boolean;
+  isVisible: boolean;
+  onToggle: () => void;
   initialBalance: number;
   income: number;
   expenses: number;
   currentBalance: number;
 }
 
-const FinancialStats: React.FC<FinancialStatsProps> = ({ isVisible = true, initialBalance, income, expenses, currentBalance }) => {
+const FinancialStats: React.FC<FinancialStatsProps> = ({ isVisible, onToggle, initialBalance, income, expenses, currentBalance }) => {
   const stats = [
     { label: "Saldo inicial", value: initialBalance, color: "text-blue-600", icon: "account_balance" },
     { label: "Entradas registradas", value: income, color: "text-emerald-600", icon: "trending_up" },
@@ -27,6 +28,9 @@ const FinancialStats: React.FC<FinancialStatsProps> = ({ isVisible = true, initi
           </div>
         ))}
       </div>
+      <button aria-label={isVisible ? "Ocultar resumo" : "Exibir resumo"} onClick={onToggle} className="absolute -bottom-4 left-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-blue-600 text-white shadow-lg flex items-center justify-center hover:bg-blue-700 transition-all z-40 border-2 border-white">
+        <span className={cn("material-symbols-outlined transition-transform duration-300", isVisible ? "rotate-0" : "rotate-180")}>keyboard_arrow_down</span>
+      </button>
     </div>
   );
 };

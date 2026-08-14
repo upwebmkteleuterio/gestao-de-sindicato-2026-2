@@ -19,22 +19,27 @@ export type FinancialTransaction = {
 export const useFinancialTransactions = () => useQuery({
   queryKey: ["financial-transactions"],
   queryFn: async () => {
-    const { data, error } = await supabase
-      .from("financial_transactions")
-      .select("id, type, origin, title, amount, transaction_date, description, asaas_payment_id, company:companies(name, cnpj), category:financial_categories(id, name)")
-      .order("transaction_date", { ascending: false })
-      .order("created_at", { ascending: false });
+    const { data, error } = await supabase.from("financial_transactions").select("id, type, origin, title, amount, transaction_date, description, asaas_payment_id, company:companies(name, cnpj), category:financial_categories(id, name)").order("transaction_date", { ascending: false }).order("created_at", { ascending: false });
     if (error) throw error;
     return (data ?? []) as unknown as FinancialTransaction[];
   },
 });
 
 export const useFinancialCategories = () => useQuery({
-  queryKey: ["financial-categories-all"],
+  queryKey: ["financial-categories-active"],
   queryFn: async () => {
     const { data, error } = await supabase.from("financial_categories").select("id, name, kind, active").eq("active", true).order("name");
     if (error) throw error;
-    return data;
+    return (data ?? []) as FinancialCategory[];
+  },
+});
+
+export const useAllFinancialCategories = () => useQuery({
+  queryKey: ["financial-categories-all"],
+  queryFn: async () => {
+    const { data, error } = await supabase.from("financial_categories").select("id, name, kind, active").order("active", { ascending: false }).order("name");
+    if (error) throw error;
+    return (data ?? []) as FinancialCategory[];
   },
 });
 
