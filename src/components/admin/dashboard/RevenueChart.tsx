@@ -22,7 +22,7 @@ const RevenueChart = () => {
   }
 
   const monthlyData = data?.monthlyRevenue || [];
-  const maxAmount = Math.max(...monthlyData.flatMap(d => [d.collected, d.pending])) || 1;
+  const maxAmount = Math.max(...monthlyData.flatMap(d => [d.received, d.pending, d.overdue])) || 1;
   const chartWidth = 800;
   const chartHeight = 300;
   const paddingBottom = 50;
@@ -30,9 +30,9 @@ const RevenueChart = () => {
   const columnWidth = chartWidth / monthlyData.length;
 
   // 1. Calculate data points
-  const collectedPoints = monthlyData.map((d, index) => ({
+  const receivedPoints = monthlyData.map((d, index) => ({
     x: (index / (monthlyData.length - 1)) * chartWidth,
-    y: chartAreaHeight - ((d.collected / maxAmount) * chartAreaHeight),
+    y: chartAreaHeight - ((d.received / maxAmount) * chartAreaHeight),
     data: d,
   }));
 
@@ -70,18 +70,20 @@ const RevenueChart = () => {
     return path;
   };
 
-  const collectedPath = getCurvePath(collectedPoints);
-  const collectedAreaPath = getCurvePath(collectedPoints, true);
+  const receivedPath = getCurvePath(receivedPoints);
+  const receivedAreaPath = getCurvePath(receivedPoints, true);
   const pendingPath = getCurvePath(pendingPoints);
+  const overduePoints = monthlyData.map((d, index) => ({ x: (index / (monthlyData.length - 1)) * chartWidth, y: chartAreaHeight - ((d.overdue / maxAmount) * chartAreaHeight), data: d }));
+  const overduePath = getCurvePath(overduePoints);
   
   const hoveredData = hoveredIndex !== null ? monthlyData[hoveredIndex] : null;
-  const hoveredPoint = hoveredIndex !== null ? collectedPoints[hoveredIndex] : null;
+  const hoveredPoint = hoveredIndex !== null ? receivedPoints[hoveredIndex] : null;
 
   return (
     <Card className="border-slate-200 shadow-sm overflow-hidden">
       <CardHeader>
-        <CardTitle className="text-lg font-bold text-slate-900">Receita vs Inadimplência</CardTitle>
-        <p className="text-sm text-slate-500">Desempenho financeiro nos últimos {monthlyData.length} meses</p>
+        <CardTitle className="text-lg font-bold text-slate-900">Recebimentos e valores em aberto</CardTitle>
+        <p className="text-sm text-slate-500">Recebimentos confirmados, valores pendentes e vencidos nos últimos {monthlyData.length} meses</p>
       </CardHeader>
       <CardContent className="pt-0">
         <div className="relative h-64 w-full group" onMouseLeave={() => setHoveredIndex(null)}>
@@ -91,36 +93,37 @@ const RevenueChart = () => {
                 <line key={y} stroke="#e5e7eb" strokeWidth="1" x1="0" x2={chartWidth} y1={y} y2={y} />
             ))}
             
-            {/* Collected Revenue Area (Blue Shadow) */}
+            {/* Received Revenue Area (Blue Shadow) */}
             <path 
-              d={collectedAreaPath} 
+              d={receivedAreaPath} 
               fill="url(#blueGradient)" 
               opacity="0.2"
             ></path>
 
             {/* Collected Revenue Line (Blue Smooth Curve) */}
             <path 
-              d={collectedPath} 
+              d={receivedPath} 
               fill="none" 
-              stroke="#3b82f6" // Blue-500
+              stroke="#3b82f6"
               strokeWidth="3"
               strokeLinejoin="round"
               strokeLinecap="round"
             ></path>
 
             {/* Pending Revenue Line (Red Dotted Smooth Curve) */}
+            <path d={overduePath} fill="none" stroke="#f97316" strokeDasharray="3,4" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round"></path>
             <path 
               d={pendingPath} 
               fill="none" 
-              stroke="#ef4444" // Red-500
-              strokeDasharray="5,5" 
+              stroke="#f59e0b"
+              strokeDasharray="5,5"
               strokeWidth="2"
               strokeLinejoin="round"
               strokeLinecap="round"
             ></path>
             
             {/* Hover Points (Invisible hit areas for Tooltip) */}
-            {collectedPoints.map((point, index) => (
+            {receivedPoints.map((point, index) => (
                 <rect
                     key={index}
                     x={index * columnWidth}
@@ -171,8 +174,8 @@ const RevenueChart = () => {
             >
                 <p className="text-xs font-bold border-b border-slate-700 pb-1 mb-1">Mês: {hoveredData.month}</p>
                 <div className="space-y-1">
-                    <p className="text-sm font-medium text-blue-400">Arrecadado: {formatCurrency(hoveredData.collected)}</p>
-                    <p className="text-sm font-medium text-red-400">Pendente: {formatCurrency(hoveredData.pending)}</p>
+                    <p className="text-sm font-medium text-blue-400">Recebido: {formatCurrency(hoveredData.received)}</p>
+                    <p className="text-sm font-medium text-amber-400">A receber: {formatCurrency(hoveredData.pending)}</p><p className="text-sm font-medium text-orange-400">Em atraso: {formatCurrency(hoveredData.overdue)}</p>
                 </div>
             </div>
           )}
@@ -189,11 +192,15 @@ const RevenueChart = () => {
         <div className="flex items-center gap-6 mt-4 justify-center">
           <div className="flex items-center gap-2">
             <span className="size-3 rounded-full bg-blue-600"></span>
-            <span className="text-sm text-slate-600">Receita Arrecadada</span>
+            <span className="text-sm text-slate-600">Receita Recebida</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="size-3 rounded-full bg-red-500"></span>
-            <span className="text-sm text-slate-600">Receita Pendente</span>
+            <span className="size-3 rounded-full bg-amber-500"></span>
+            <span className="text-sm text-slate-600">A receber</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="size-3 rounded-full bg-orange-500"></span>
+            <span className="text-sm text-slate-600">Em atraso</span>
           </div>
         </div>
       </CardContent>

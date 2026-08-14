@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import DashboardStats from "@/components/admin/dashboard/DashboardStats";
 import RevenueChart from "@/components/admin/dashboard/RevenueChart";
 import { format } from "date-fns";
@@ -9,23 +10,21 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 const AdminDashboard = () => {
+  const queryClient = useQueryClient();
   const [lastUpdate, setLastUpdate] = useState(new Date());
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     setIsRefreshing(true);
-    toast.promise(
-      new Promise((resolve) => setTimeout(resolve, 1200)),
-      {
-        loading: 'Sincronizando dados do sindicato...',
-        success: () => {
-          setLastUpdate(new Date());
-          setIsRefreshing(false);
-          return "Dashboard atualizado com sucesso!";
-        },
-        error: 'Erro ao atualizar dados.',
-      }
-    );
+    try {
+      await queryClient.invalidateQueries({ queryKey: ["adminDashboardData"] });
+      setLastUpdate(new Date());
+      toast.success("Dashboard atualizado com sucesso!");
+    } catch {
+      toast.error("Erro ao atualizar dados.");
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
   return (
